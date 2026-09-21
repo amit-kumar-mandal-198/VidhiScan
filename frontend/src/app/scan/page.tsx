@@ -230,6 +230,45 @@ export default function PublicPortal() {
     };
   }, [captureMode, capturedImage, startLiveCamera, stopLiveCamera]);
 
+  const compressImage = async (blobOrFile: Blob, maxWidth = 1280, quality = 0.85): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blobOrFile);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (b) => resolve(b || blobOrFile),
+            "image/jpeg",
+            quality
+          );
+        } else {
+          resolve(blobOrFile);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(blobOrFile);
+      };
+      img.src = url;
+    });
+  };
+
   const captureFromVideo = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
