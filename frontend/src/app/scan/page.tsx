@@ -36,6 +36,7 @@ import {
   History,
   Trash2,
 } from "lucide-react";
+import VidhiBadge from "@/components/VidhiBadge";
 
 interface CitizenScanHistoryItem {
   id: number;
@@ -118,6 +119,7 @@ export default function PublicPortal() {
   const [showRawText, setShowRawText] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<any | null>(null);
 
   // Redressal & Complaint Modal State
   const [showComplaintModal, setShowComplaintModal] = useState(false);
@@ -325,6 +327,7 @@ export default function PublicPortal() {
     setPdfUrl(null);
     setErrorMsg(null);
     setRawOcrText("");
+    setCompanyProfile(null);
   };
 
   const sendToAI = async (fileOrBlob: Blob) => {
@@ -367,6 +370,7 @@ export default function PublicPortal() {
       if (verdict) {
         setScanResult(verdict);
         setMasterRegistry(data.ai_analysis?.master_registry || null);
+        setCompanyProfile(data.ai_analysis?.company_profile || null);
         setScanId(data.scan_id || 1085);
         setRawOcrText(rawText);
 
@@ -917,6 +921,55 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                     </div>
                   </div>
                 </div>
+
+                {/* Brand VidhiScore™ & Trust Badge Card */}
+                {companyProfile && (
+                  <div className="p-4 rounded-card border border-border bg-white/95 shadow-soft space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-ink-700" />
+                        <span className="font-semibold text-xs text-ink-900">
+                          Manufacturer: {companyProfile.company_name}
+                        </span>
+                      </div>
+                      <VidhiBadge
+                        score={companyProfile.current_vidhiscore}
+                        badgeCode={companyProfile.badge_code}
+                        tierName={companyProfile.tier_name}
+                        size="sm"
+                        isBlacklisted={companyProfile.is_blacklisted}
+                      />
+                    </div>
+
+                    {companyProfile.score_update && (
+                      <div
+                        className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between ${
+                          companyProfile.score_update.points_delta > 0
+                            ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                            : companyProfile.score_update.points_delta < 0
+                            ? "bg-red-50/80 border-red-200 text-red-900 animate-pulse"
+                            : "bg-surface-base border-border text-ink-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {companyProfile.score_update.points_delta < 0 ? (
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          )}
+                          <span className="text-[11px] leading-tight">
+                            {companyProfile.score_update.reason}
+                          </span>
+                        </div>
+                        <span className="font-bold shrink-0 ml-2">
+                          {companyProfile.score_update.points_delta > 0
+                            ? `+${companyProfile.score_update.points_delta} pts`
+                            : `${companyProfile.score_update.points_delta} pts`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Central Registry Price Comparison & Overcharge Card */}
                 {masterRegistry && (

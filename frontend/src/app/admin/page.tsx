@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Activity,
   ShieldAlert,
@@ -40,6 +41,7 @@ import {
   Headphones,
   Sparkles,
 } from "lucide-react";
+import VidhiBadge from "@/components/VidhiBadge";
 
 interface MarketHotspot {
   id: string;
@@ -260,9 +262,92 @@ export default function AdminPortal() {
       .finally(() => setIsLoading(false));
   };
 
+  // VidhiScore Enterprise & Priority Raid Radar State
+  const [raidRadar, setRaidRadar] = useState<any[]>([]);
+  const [loadingRadar, setLoadingRadar] = useState(false);
+  const [actionSuccessModal, setActionSuccessModal] = useState<any | null>(null);
+  const [dispatchingActionId, setDispatchingActionId] = useState<number | null>(null);
+
+  const fetchRaidRadar = () => {
+    setLoadingRadar(true);
+    fetch("/api/enforcement/raid-radar", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRaidRadar(data);
+        } else {
+          setRaidRadar([
+            {
+              company_id: 6,
+              company_name: "Kalyan Relabeling & Counterfeit Syndicate",
+              brand_slug: "kalyan-syndicate",
+              category: "Packaged Snacks & Confectionery",
+              address: "Kalyan-Bhiwandi Road Godown 12, Thane, Maharashtra",
+              gstin: "27AABCK9999P1Z1",
+              current_vidhiscore: 340,
+              tier_name: "Defaulter (Red Flag)",
+              badge_code: "defaulter",
+              is_blacklisted: true,
+              active_violations_count: 15,
+              recommended_action: "RAID_ORDER",
+              priority: "CRITICAL"
+            },
+            {
+              company_id: 5,
+              company_name: "Metro Cash & Carry Wholesale Repackers",
+              brand_slug: "metro-repack",
+              category: "Bulk Commodity Repackaging",
+              address: "Yeshwantpur Industrial Area",
+              gstin: "29AAACM6942D1Z3",
+              current_vidhiscore: 520,
+              tier_name: "Vidhi Chetna (Bronze Watchlist)",
+              badge_code: "bronze",
+              is_blacklisted: false,
+              active_violations_count: 7,
+              recommended_action: "SURPRISE_AUDIT",
+              priority: "HIGH"
+            }
+          ]);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRadar(false));
+  };
+
+  const handleDispatchEnforcement = async (companyId: number, actionType: "RAID_ORDER" | "NOTICE" | "BADGE_REVOCATION") => {
+    setDispatchingActionId(companyId);
+    try {
+      const res = await fetch("/api/enforcement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: companyId,
+          action_type: actionType,
+          officer_id: "MAH-LM-HQ-SQ4",
+          officer_notes: actionType === "RAID_ORDER"
+            ? "Immediate physical entry, inventory seizure and premises sealing ordered under Section 15."
+            : "Section 36 & Rule 6 statutory non-compliance notice served."
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to dispatch enforcement order");
+      }
+
+      const data = await res.json();
+      setActionSuccessModal(data);
+      fetchRaidRadar();
+    } catch (err: any) {
+      alert("Enforcement dispatch error: " + err.message);
+    } finally {
+      setDispatchingActionId(null);
+    }
+  };
+
   useEffect(() => {
     fetchScans();
     fetchProducts();
+    fetchRaidRadar();
   }, []);
 
   // Compute live statistics
@@ -788,7 +873,166 @@ export default function AdminPortal() {
         </div>
       </div>
 
-      {/* 4. CENTRAL MASTER REGISTRY MANAGER & PRICE-CAP TESTER */}
+      {/* 4. ENTERPRISE VIDHISCORE™ & PRIORITY RAID RADAR */}
+      <div className="rounded-card bg-surface-solid/95 border border-red-200/80 p-5 md:p-6 shadow-soft space-y-4 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
+              <h3 className="font-semibold text-ink-900 text-base flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-600" />
+                <span>Enterprise VidhiScore™ & Priority Raid Dispatch Radar</span>
+              </h3>
+            </div>
+            <p className="text-xs text-ink-500 mt-0.5">
+              Live corporate risk index under Legal Metrology Act, 2009. Authorize Section 15 physical search & seizure warrants or issue digital show-cause notices.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/companies"
+              className="btn btn--secondary h-8 px-3 rounded-control text-xs font-semibold shadow-xs flex items-center gap-1.5"
+            >
+              <Building2 className="w-3.5 h-3.5 text-ink-600" />
+              <span>Full Brand Directory</span>
+              <ExternalLink className="w-3 h-3 text-ink-400" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Radar Entities Table */}
+        <div className="border border-border rounded-lg overflow-hidden bg-white">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-surface-base border-b border-border text-ink-500 font-mono text-[11px]">
+              <tr>
+                <th className="py-2.5 px-3">Enterprise / Brand</th>
+                <th className="py-2.5 px-3">VidhiScore & Badge</th>
+                <th className="py-2.5 px-3">Enforcement Priority</th>
+                <th className="py-2.5 px-3">Active Violations</th>
+                <th className="py-2.5 px-3 text-right">Enforcement Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {raidRadar.length > 0 ? (
+                raidRadar.map((target) => (
+                  <tr key={target.company_id} className="hover:bg-surface-base/50 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-ink-900">{target.company_name}</div>
+                      <div className="text-[10px] text-ink-500 font-mono mt-0.5">{target.address}</div>
+                      <div className="text-[10px] text-ink-400 font-mono">GSTIN: {target.gstin}</div>
+                    </td>
+
+                    <td className="py-3 px-3">
+                      <VidhiBadge
+                        score={target.current_vidhiscore}
+                        badgeCode={target.badge_code}
+                        tierName={target.tier_name}
+                        size="sm"
+                        isBlacklisted={target.is_blacklisted}
+                      />
+                    </td>
+
+                    <td className="py-3 px-3">
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          target.priority === "CRITICAL"
+                            ? "bg-red-100 text-red-800 border border-red-300 animate-pulse"
+                            : target.priority === "HIGH"
+                            ? "bg-orange-100 text-orange-800 border border-orange-300"
+                            : "bg-slate-100 text-slate-800 border border-slate-300"
+                        }`}
+                      >
+                        <ShieldAlert className="w-3 h-3" />
+                        <span>{target.priority} RADAR</span>
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-3 font-mono">
+                      <span className="font-bold text-red-600">{target.active_violations_count} detected</span>
+                      <div className="text-[10px] text-ink-400">Recurrent offence</div>
+                    </td>
+
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleDispatchEnforcement(target.company_id, "NOTICE")}
+                          disabled={dispatchingActionId === target.company_id}
+                          className="px-2.5 py-1 rounded-md border border-border bg-surface-base text-ink-800 hover:bg-surface-tint text-[11px] font-semibold transition-all"
+                        >
+                          Issue Notice
+                        </button>
+
+                        <button
+                          onClick={() => handleDispatchEnforcement(target.company_id, "RAID_ORDER")}
+                          disabled={dispatchingActionId === target.company_id}
+                          className="px-2.5 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1 transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                          <ShieldAlert className="w-3 h-3" />
+                          <span>{dispatchingActionId === target.company_id ? "Issuing..." : "Order Raid (Sec 15)"}</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-xs text-ink-400">
+                    No critical defaulters on the active raid radar currently.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Enforcement Dispatch Confirmation Modal */}
+      {actionSuccessModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-solid border border-border rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-xs">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="font-bold text-base text-ink-900">Enforcement Action Executed</h3>
+              <p className="text-xs text-ink-600">
+                Official statutory order has been generated under the Legal Metrology Act, 2009.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-surface-base border border-border rounded-lg text-xs text-left space-y-1 font-mono">
+              <div><span className="text-ink-400">Target Enterprise:</span> <span className="font-semibold text-ink-900">{actionSuccessModal.company_name}</span></div>
+              <div><span className="text-ink-400">Action Order Type:</span> <span className="font-bold text-red-600">{actionSuccessModal.action_type}</span></div>
+              <div><span className="text-ink-400">Status:</span> <span className="font-semibold text-emerald-700">DISPATCHED TO FIELD UNITS</span></div>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              {actionSuccessModal.document_url && (
+                <a
+                  href={actionSuccessModal.document_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2 px-4 rounded-lg bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Legal Warrant / Notice PDF</span>
+                </a>
+              )}
+
+              <button
+                onClick={() => setActionSuccessModal(null)}
+                className="w-full py-2 px-4 rounded-lg border border-border text-ink-600 font-semibold text-xs hover:bg-surface-base"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. CENTRAL MASTER REGISTRY MANAGER & PRICE-CAP TESTER */}
       <div className="rounded-card bg-surface-solid/90 border border-border p-5 md:p-6 shadow-soft space-y-5">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>

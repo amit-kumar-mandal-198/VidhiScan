@@ -47,6 +47,7 @@ import {
   Check,
   Info
 } from "lucide-react";
+import VidhiBadge from "@/components/VidhiBadge";
 
 interface DeclarationItem {
   rule: string;
@@ -69,6 +70,13 @@ interface DemoScenario {
   badgeClass: string;
   verdict: string;
   description: string;
+  vidhiScore: number;
+  badgeCode: string;
+  tierName: string;
+  scoreDelta: string;
+  scoreDeltaType: "up" | "down" | "neutral";
+  scoreReason: string;
+  enforcementNotice?: string;
   declarations: DeclarationItem[];
 }
 
@@ -89,6 +97,12 @@ export default function LandingPage() {
       badgeClass: "bg-tile-mint-bg text-tile-mint-fg border-tile-mint-fg/30",
       verdict: "Fully compliant with Legal Metrology Rules, 2011",
       description: "All 8 mandatory declarations are legibly printed with proper metric unit symbols and matching central price registry.",
+      vidhiScore: 940,
+      badgeCode: "diamond",
+      tierName: "Vidhi Ratna (Diamond Elite)",
+      scoreDelta: "+10 pts",
+      scoreDeltaType: "up",
+      scoreReason: "100% statutory adherence & zero defect history maintains Diamond Elite rank",
       declarations: [
         { rule: "Rule 6(1)(a)", name: "Manufacturer name & address", value: "GCMMF Ltd., Anand 388001, Gujarat", pass: true },
         { rule: "Rule 6(1)(b)", name: "Generic commodity name", value: "Pasteurised Butter", pass: true },
@@ -113,6 +127,13 @@ export default function LandingPage() {
       badgeClass: "bg-tile-peach-bg text-tile-peach-fg border-tile-peach-fg/30",
       verdict: "Section 36(2) overcharge offence detected",
       description: "Illegal sticker alteration detected over original packaging MRP. Retail price ₹519 exceeds legal manufacturer cap of ₹469.",
+      vidhiScore: 560,
+      badgeCode: "silver",
+      tierName: "Vidhi Mitra (Silver Standard)",
+      scoreDelta: "-150 pts",
+      scoreDeltaType: "down",
+      scoreReason: "Critical Section 36(2) overcharge penalty (-100 pts) + missing customer care and expiry declarations (-50 pts)",
+      enforcementNotice: "🚨 Priority Section 15 Raid Alert Dispatched to District Legal Metrology Squad",
       declarations: [
         { rule: "Rule 6(1)(a)", name: "Manufacturer name & address", value: "Hindustan Unilever Ltd, Mumbai", pass: true },
         { rule: "Rule 6(1)(b)", name: "Generic commodity name", value: "Detergent Powder", pass: true },
@@ -136,6 +157,12 @@ export default function LandingPage() {
       badgeClass: "bg-tile-indigo-bg text-tile-indigo-fg border-tile-indigo-fg/30",
       verdict: "Proviso compliance clause validated",
       description: "Date of manufacture is stamped on crown seal/neck area pursuant to statutory Proviso to Rule 6(1)(d).",
+      vidhiScore: 780,
+      badgeCode: "gold",
+      tierName: "Vidhi Shrestha (Gold Tier)",
+      scoreDelta: "+5 pts",
+      scoreDeltaType: "up",
+      scoreReason: "Proviso to Rule 6(1)(d) neck/crown date stamping statutory clause validated without penalty",
       declarations: [
         { rule: "Rule 6(1)(a)", name: "Packer name & address", value: "Adani Wilmar Ltd, Ahmedabad", pass: true },
         { rule: "Rule 6(1)(b)", name: "Generic commodity name", value: "Refined Sunflower Oil", pass: true },
@@ -267,10 +294,10 @@ export default function LandingPage() {
             </div>
 
             {/* Primary Action Button Cluster */}
-            <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3 pt-1">
+            <div className="flex flex-wrap items-center lg:items-start justify-center lg:justify-start gap-3 pt-1">
               <Link
                 href="/scan"
-                className="btn btn--primary w-full sm:w-auto h-10 px-5 shadow-xs"
+                className="btn btn--primary h-10 px-5 shadow-xs"
               >
                 <Camera className="w-4 h-4 text-ink-900" />
                 <span>Launch citizen scanner</span>
@@ -278,8 +305,16 @@ export default function LandingPage() {
               </Link>
 
               <Link
+                href="/companies"
+                className="btn btn--ghost h-10 px-5 border border-border/70 hover:border-ink-900"
+              >
+                <Award className="w-4 h-4 text-amber-600" />
+                <span>Brand Trust & Badges</span>
+              </Link>
+
+              <Link
                 href="/inspector"
-                className="btn btn--ghost w-full sm:w-auto h-10 px-5 border border-border/60"
+                className="btn btn--ghost h-10 px-5 border border-border/60"
               >
                 <ShieldAlert className="w-4 h-4 text-ink-900" />
                 <span>Inspector squad</span>
@@ -287,10 +322,18 @@ export default function LandingPage() {
             </div>
 
             {/* Key Trust Signals */}
-            <div className="grid grid-cols-2 gap-2.5 max-w-md mx-auto lg:mx-0 text-xs text-ink-500 font-mono">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-w-lg mx-auto lg:mx-0 text-xs text-ink-500 font-mono">
               <div className="bg-surface-solid/70 p-2.5 rounded-control border border-border flex items-center space-x-2 shadow-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-tile-mint-fg shrink-0" />
                 <span>8 rules audited</span>
+              </div>
+              <div className="bg-surface-solid/70 p-2.5 rounded-control border border-border flex items-center space-x-2 shadow-xs">
+                <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>5-Tier VidhiScore™</span>
+              </div>
+              <div className="bg-surface-solid/70 p-2.5 rounded-control border border-border flex items-center space-x-2 shadow-xs">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>Sec 15 Raid Radar</span>
               </div>
               <div className="bg-surface-solid/70 p-2.5 rounded-control border border-border flex items-center space-x-2 shadow-xs">
                 <Zap className="w-3.5 h-3.5 text-tile-indigo-fg shrink-0" />
@@ -390,6 +433,55 @@ export default function LandingPage() {
                 </span>
               </div>
 
+              {/* Enterprise VidhiScore™ Trust Badge & Dynamic Point Impact */}
+              <div className="p-3 rounded-panel bg-surface-tint border border-border space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono font-semibold uppercase text-ink-500 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Brand VidhiScore™ Status</span>
+                  </span>
+                  <VidhiBadge
+                    score={currentScenario.vidhiScore}
+                    badgeCode={currentScenario.badgeCode}
+                    tierName={currentScenario.tierName}
+                    size="sm"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
+                  <span className="text-ink-600 font-medium">Scan Score Delta:</span>
+                  <span
+                    className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
+                      currentScenario.scoreDeltaType === "up"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                        : currentScenario.scoreDeltaType === "down"
+                        ? "bg-red-100 text-red-800 border border-red-300 animate-pulse font-bold"
+                        : "bg-slate-100 text-slate-700 border border-slate-300"
+                    }`}
+                  >
+                    {currentScenario.scoreDelta}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  {currentScenario.scoreReason}
+                </p>
+
+                {currentScenario.enforcementNotice && (
+                  <div className="mt-1 pt-2 border-t border-red-200/80 text-[11px] font-semibold text-red-700 flex items-start gap-1.5 bg-red-50/70 p-2 rounded">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span>{currentScenario.enforcementNotice}</span>
+                      <div>
+                        <Link href="/admin" className="text-red-800 underline font-mono text-[10px] hover:text-red-950">
+                          View Raid Radar in Command HQ →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2 pt-2 border-t border-border">
                 <div className="flex justify-between text-xs">
                   <span className="text-ink-500">Scanned retail price:</span>
@@ -437,13 +529,22 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Link
-              href="/scan"
-              className="btn btn--primary w-full justify-center shadow-xs"
-            >
-              <Camera className="w-4 h-4 text-ink-900" />
-              <span>Test with live camera scanner</span>
-            </Link>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Link
+                href="/scan"
+                className="btn btn--primary justify-center shadow-xs text-xs py-2"
+              >
+                <Camera className="w-3.5 h-3.5 text-ink-900" />
+                <span>Test live camera</span>
+              </Link>
+              <Link
+                href="/companies"
+                className="btn btn--ghost justify-center border border-border text-xs py-2 hover:border-ink-900"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-600" />
+                <span>Inspect brand dossier</span>
+              </Link>
+            </div>
           </div>
 
           {/* Right: Declarations Table */}
@@ -512,7 +613,332 @@ export default function LandingPage() {
 
       </section>
 
-      {/* 3. CORE METRICS COUNTER */}
+      {/* 4. NATIONAL VIDHISCORE™ & 5-TIER BRAND TRUST SYSTEM */}
+      <section className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-6 sm:p-8 md:p-10 shadow-soft space-y-8">
+        
+        {/* Section Header */}
+        <div className="max-w-3xl space-y-2">
+          <div className="inline-flex items-center space-x-2 text-ink-500 text-xs font-mono font-semibold uppercase tracking-wider">
+            <Award className="w-4 h-4 text-amber-500" />
+            <span>Enterprise Brand Trust & Regulatory Governance</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-ink-900 tracking-tight">
+            National VidhiScore™ & 5-Tier Brand Accreditation
+          </h2>
+          <p className="text-xs sm:text-sm text-ink-500 leading-relaxed">
+            VidhiScan bridges daily consumer OCR scans with an automated corporate compliance ledger. High-compliance FMCG manufacturers earn verified trust badges, while repeated violations dynamically penalize VidhiScores and trigger automated Section 15 raid warrants.
+          </p>
+        </div>
+
+        {/* 5-Tier Visual Accreditation Matrix */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Tier 1: Diamond */}
+          <div className="p-4 rounded-card bg-emerald-50/70 border border-emerald-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xl">💎</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500 text-white uppercase">
+                  900 – 1000
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-emerald-950">Vidhi Ratna</h4>
+                <p className="text-[11px] font-medium text-emerald-800">Diamond Elite</p>
+              </div>
+              <p className="text-[11px] text-emerald-700 leading-snug">
+                Exemplary zero-defect record. Fast-track retail clearance with verified digital trust seal.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[10px] font-mono text-emerald-800">
+              <span>Benchmark</span>
+              <span className="font-bold">Amul (940)</span>
+            </div>
+          </div>
+
+          {/* Tier 2: Gold */}
+          <div className="p-4 rounded-card bg-amber-50/70 border border-amber-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🥇</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500 text-white uppercase">
+                  750 – 899
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-amber-950">Vidhi Shrestha</h4>
+                <p className="text-[11px] font-medium text-amber-800">Gold Tier</p>
+              </div>
+              <p className="text-[11px] text-amber-700 leading-snug">
+                Standard baseline accreditation. Verified SKU catalogue with statutory Proviso adherence.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[10px] font-mono text-amber-800">
+              <span>Benchmark</span>
+              <span className="font-bold">Fortune (780)</span>
+            </div>
+          </div>
+
+          {/* Tier 3: Silver */}
+          <div className="p-4 rounded-card bg-slate-100/80 border border-slate-300 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🥈</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-600 text-white uppercase">
+                  600 – 749
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900">Vidhi Mitra</h4>
+                <p className="text-[11px] font-medium text-slate-700">Silver Standard</p>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                General compliance. Automated caution advisories dispatched for minor labelling discrepancies.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-slate-300/60 flex items-center justify-between text-[10px] font-mono text-slate-700">
+              <span>Benchmark</span>
+              <span className="font-bold">HUL (640)</span>
+            </div>
+          </div>
+
+          {/* Tier 4: Bronze */}
+          <div className="p-4 rounded-card bg-orange-50/70 border border-orange-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🥉</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-orange-500 text-white uppercase">
+                  450 – 599
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-orange-950">Vidhi Chetna</h4>
+                <p className="text-[11px] font-medium text-orange-800">Bronze Watchlist</p>
+              </div>
+              <p className="text-[11px] text-orange-700 leading-snug">
+                Heightened surveillance. 15-day mandatory rectification notices served with doubled audit frequency.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-orange-200/60 flex items-center justify-between text-[10px] font-mono text-orange-800">
+              <span>Benchmark</span>
+              <span className="font-bold">Metro Repack (510)</span>
+            </div>
+          </div>
+
+          {/* Tier 5: Defaulter */}
+          <div className="p-4 rounded-card bg-red-50/80 border border-red-300 flex flex-col justify-between space-y-3 ring-1 ring-red-400">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🚨</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-600 text-white uppercase">
+                  &lt; 450
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-red-950">Defaulter</h4>
+                <p className="text-[11px] font-medium text-red-800">Trust Revoked</p>
+              </div>
+              <p className="text-[11px] text-red-700 leading-snug">
+                Priority enforcement target. Section 15 search & seizure raid warrant generated automatically.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-red-200/60 flex items-center justify-between text-[10px] font-mono text-red-800">
+              <span>Benchmark</span>
+              <span className="font-bold">Kalyan Synd. (320)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Enforcement Pipeline Flow */}
+        <div className="p-5 rounded-card bg-surface-tint border border-border space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Scale className="w-4 h-4 text-tile-indigo-fg" />
+              <h4 className="text-xs font-mono font-semibold uppercase tracking-wide text-ink-900">
+                End-to-End Dynamic Enforcement Pipeline
+              </h4>
+            </div>
+            <span className="text-[11px] font-mono text-ink-500">Legal Metrology Act, 2009</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+            <div className="p-3 rounded-panel bg-white border border-border space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-ink-900 text-[11px]">
+                <span className="w-5 h-5 rounded-full bg-tile-indigo-bg text-tile-indigo-fg flex items-center justify-center font-mono">1</span>
+                <span>Label OCR Scan</span>
+              </div>
+              <p className="text-[11px] text-ink-500 leading-relaxed">
+                Citizen or officer camera captures packaging at retail shelf or depot.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-panel bg-white border border-border space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-ink-900 text-[11px]">
+                <span className="w-5 h-5 rounded-full bg-tile-indigo-bg text-tile-indigo-fg flex items-center justify-center font-mono">2</span>
+                <span>Neural Extraction</span>
+              </div>
+              <p className="text-[11px] text-ink-500 leading-relaxed">
+                EasyOCR verifies 8 mandatory declarations and detects dual-MRP sticker tampering.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-panel bg-white border border-border space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-ink-900 text-[11px]">
+                <span className="w-5 h-5 rounded-full bg-tile-peach-bg text-tile-peach-fg flex items-center justify-center font-mono">3</span>
+                <span>VidhiScore Penalty</span>
+              </div>
+              <p className="text-[11px] text-ink-500 leading-relaxed">
+                Points deducted automatically (-100 for overcharge, -50 for missing contact/expiry).
+              </p>
+            </div>
+
+            <div className="p-3 rounded-panel bg-white border border-border space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-ink-900 text-[11px]">
+                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center font-mono">4</span>
+                <span>Raid Radar Alert</span>
+              </div>
+              <p className="text-[11px] text-ink-500 leading-relaxed">
+                Score drops below 600 pts ➔ company flagged on Command HQ priority radar.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-panel bg-white border border-red-200 bg-red-50/30 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-red-900 text-[11px]">
+                <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center font-mono">5</span>
+                <span>Sec 15 Raid Warrant</span>
+              </div>
+              <p className="text-[11px] text-ink-500 leading-relaxed">
+                1-click PDF warrant dispatched to district squad for physical premise raid.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Unified 5-Portal Stakeholder Gateway (For Judges & Evaluators) */}
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-semibold text-ink-900">
+                Explore the 5 Stakeholder Portals (Single Prototype Access)
+              </h3>
+              <p className="text-xs text-ink-500">
+                Judges can test the entire multi-stakeholder ecosystem directly through these one-click portals:
+              </p>
+            </div>
+            <Link
+              href="/companies"
+              className="btn btn--ghost text-xs self-start sm:self-auto border border-border hover:border-ink-900"
+            >
+              <span>View Brand Directory</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+            {/* 1. Scanner */}
+            <Link
+              href="/scan"
+              className="p-3.5 rounded-card bg-surface-solid border border-border hover:border-ink-900 transition-all shadow-xs group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Camera className="w-4 h-4 text-lime-600" />
+                  <span className="text-[10px] font-mono text-ink-500 uppercase">Public</span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-lime-700">1. Citizen Scanner</h4>
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  Live camera OCR scanner with instant VidhiScore brand pill feedback.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center text-[11px] font-semibold text-lime-700">
+                <span>Launch Camera →</span>
+              </div>
+            </Link>
+
+            {/* 2. Companies Directory */}
+            <Link
+              href="/companies"
+              className="p-3.5 rounded-card bg-surface-solid border border-border hover:border-ink-900 transition-all shadow-xs group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <span className="text-[10px] font-mono text-ink-500 uppercase">Transparency</span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-amber-700">2. Brand Directory</h4>
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  Public leaderboard, tier filters, brand dossiers & embeddable trust seals.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center text-[11px] font-semibold text-amber-700">
+                <span>View Directory →</span>
+              </div>
+            </Link>
+
+            {/* 3. Manufacturer Console */}
+            <Link
+              href="/manufacturer"
+              className="p-3.5 rounded-card bg-surface-solid border border-border hover:border-ink-900 transition-all shadow-xs group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  <span className="text-[10px] font-mono text-ink-500 uppercase">Corporate</span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-blue-700">3. Manufacturer Console</h4>
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  Brand self-onboarding (750 base score), SKU registry & dispute appeals.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center text-[11px] font-semibold text-blue-700">
+                <span>Open Console →</span>
+              </div>
+            </Link>
+
+            {/* 4. Inspector Squad */}
+            <Link
+              href="/inspector"
+              className="p-3.5 rounded-card bg-surface-solid border border-border hover:border-ink-900 transition-all shadow-xs group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <ShieldAlert className="w-4 h-4 text-emerald-600" />
+                  <span className="text-[10px] font-mono text-ink-500 uppercase">Enforcement</span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-emerald-700">4. Inspector Desk</h4>
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  Surprise field raids, GPS evidence triage & Section 15 raid execution desk.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center text-[11px] font-semibold text-emerald-700">
+                <span>Access Squad →</span>
+              </div>
+            </Link>
+
+            {/* 5. Command HQ */}
+            <Link
+              href="/admin"
+              className="p-3.5 rounded-card bg-surface-solid border border-border hover:border-ink-900 transition-all shadow-xs group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <BarChart3 className="w-4 h-4 text-purple-600" />
+                  <span className="text-[10px] font-mono text-ink-500 uppercase">Regulator HQ</span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-purple-700">5. Command HQ & Radar</h4>
+                <p className="text-[11px] text-ink-500 leading-snug">
+                  Statewide analytics, Central FMCG master registry & 1-click raid warrant dispatch.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center text-[11px] font-semibold text-purple-700">
+                <span>Enter HQ Radar →</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+      </section>
+
+      {/* 5. CORE METRICS COUNTER */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-card border border-border text-center space-y-1 bg-surface-solid/70 shadow-soft">
           <p className="text-3xl sm:text-4xl font-semibold text-ink-900 font-mono">8 / 8</p>

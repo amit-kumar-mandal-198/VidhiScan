@@ -8,7 +8,9 @@ import {
   ShieldAlert, 
   LayoutDashboard, 
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Award,
+  Building2
 } from "lucide-react";
 
 export default function Navbar() {
@@ -28,6 +30,20 @@ export default function Navbar() {
       icon: ScanLine,
       badge: "Scanner",
       description: "Package verification & price check",
+    },
+    {
+      label: "Brand Trust",
+      href: "/companies",
+      icon: Award,
+      badge: "Trust",
+      description: "VidhiScore & Badge Leaderboard",
+    },
+    {
+      label: "Manufacturer",
+      href: "/manufacturer",
+      icon: Building2,
+      badge: "Brand",
+      description: "Register Products & Compliance",
     },
     {
       label: "Inspector squad",

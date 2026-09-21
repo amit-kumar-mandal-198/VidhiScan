@@ -1,14 +1,19 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 import shutil
 import os
 import re
 import uuid
+import cv2
+from typing import Optional
 from datetime import datetime
 
 from ..database import get_db
-from ..models import ScanReport
+from ..models import ScanReport, Company, ProductRegistry
 from ..ai_engine import analyze_label
+from .product import verify_commodity_compliance
+from ..score_engine import match_company_for_scan, evaluate_scan_impact
+from ..pdf_generator import generate_legal_notice
 
 router = APIRouter(
     prefix="/scans",
@@ -16,19 +21,7 @@ router = APIRouter(
 )
 
 UPLOAD_DIR = "static/uploads"
-
-@router.get("/")
-def list_scans(limit: int = 20, db: Session = Depends(get_db)):
-    """
-    Returns recent scans for inspector review.
-    """
-    scans = db.query(ScanReport).order_by(ScanReport.id.desc()).limit(limit).all()
-    return scans
-
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
-
-import cv2
-from .product import verify_commodity_compliance
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def detect_barcode_from_image(image_path: str):
     try:
@@ -48,7 +41,13 @@ def detect_barcode_from_image(image_path: str):
         pass
     return None
 
-from typing import Optional
+@router.get("/")
+def list_scans(limit: int = 20, db: Session = Depends(get_db)):
+    """
+    Returns recent scans for inspector review.
+    """
+    scans = db.query(ScanReport).order_by(ScanReport.id.desc()).limit(limit).all()
+    return scans
 
 @router.post("/upload")
 async def upload_and_scan(
@@ -62,10 +61,10 @@ async def upload_and_scan(
     """
     Endpoint for the public or inspector to upload a product image.
     Saves the image locally, extracts GPS coordinates, runs OCR + Rule Engine,
-    decodes barcodes, and cross-checks with Government Master Registry.
+    decodes barcodes, cross-checks with Government Master Registry, and updates Company VidhiScore.
     """
     # 1. Save File
-    file_extension = file.filename.split('.')[-1]
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else "jpg"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
     
@@ -140,7 +139,14 @@ async def upload_and_scan(
     if not verdict["is_compliant"]:
         fraud_type = ", ".join(verdict["violations"])
         
-    # 6. Save to Database
+    # 6. Match Company for Brand Trust & VidhiScore
+    matched_company = None
+    if registry_check.get("company_id"):
+        matched_company = db.query(Company).filter(Company.id == registry_check["company_id"]).first()
+    if not matched_company:
+        matched_company = match_company_for_scan(db, ai_result["raw_text"], barcode, verdict.get("manufacturer"))
+
+    # 7. Save to Database
     db_scan = ScanReport(
         image_path=f"/{file_path}",
         barcode_detected=barcode,
@@ -154,19 +160,45 @@ async def upload_and_scan(
         latitude=latitude,
         longitude=longitude,
         location_name=location_name,
+        product_id=registry_check.get("product_id"),
+        company_id=matched_company.id if matched_company else None
     )
     
     db.add(db_scan)
     db.commit()
     db.refresh(db_scan)
+
+    # 8. Dynamic VidhiScore & Badge Impact
+    company_score_impact = None
+    if matched_company:
+        company_score_impact = evaluate_scan_impact(
+            db=db,
+            company=matched_company,
+            is_compliant=bool(verdict.get("is_compliant", False)),
+            violations=verdict.get("violations", []),
+            is_overcharged=bool(registry_check.get("is_overcharged", False)),
+            price_discrepancy=float(registry_check.get("price_discrepancy", 0.0)),
+            scan_id=db_scan.id
+        )
+        ai_result["company_profile"] = {
+            "company_id": matched_company.id,
+            "company_name": matched_company.name,
+            "brand_slug": matched_company.brand_slug,
+            "current_vidhiscore": matched_company.current_vidhiscore,
+            "tier_name": matched_company.tier.tier_name if matched_company.tier else "Unassigned",
+            "badge_code": matched_company.tier.badge_code if matched_company.tier else "silver",
+            "badge_color": matched_company.tier.badge_color if matched_company.tier else "#64748B",
+            "is_blacklisted": matched_company.is_blacklisted,
+            "score_update": company_score_impact
+        }
+    else:
+        ai_result["company_profile"] = None
     
     return {
         "scan_id": db_scan.id,
         "image_url": db_scan.image_path,
         "ai_analysis": ai_result
     }
-
-from ..pdf_generator import generate_legal_notice
 
 @router.post("/{scan_id}/generate-notice")
 async def create_notice(scan_id: int, db: Session = Depends(get_db)):

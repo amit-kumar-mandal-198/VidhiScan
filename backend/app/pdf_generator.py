@@ -91,4 +91,114 @@ def generate_legal_notice(scan_data: dict, inspector_id: str = "MAH-LM-2026"):
     
     doc.build(story)
     
-    return f"/{filepath}"
+    web_path = filepath.replace("\\", "/")
+    return f"/{web_path.lstrip('/')}"
+
+def generate_raid_warrant(enforcement_data: dict) -> str:
+    """
+    Generates an official Search, Seizure & Raid Authorization Order
+    under Section 15 of the Legal Metrology Act, 2009.
+    """
+    company_name = enforcement_data.get("company_name", "Target Entity")
+    clean_company = "".join(c for c in company_name if c.isalnum() or c in (" ", "_")).rstrip()
+    action_id = enforcement_data.get("action_id", "RW-101")
+    filename = f"Raid_Warrant_{clean_company}_{action_id}_{datetime.now().strftime('%Y%m%d%H%M')}.pdf"
+    filepath = os.path.join(PDF_DIR, filename)
+
+    doc = SimpleDocTemplate(filepath, pagesize=A4, rightMargin=54, leftMargin=54, topMargin=54, bottomMargin=36)
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='CenterTitle', alignment=1, fontSize=14, leading=18, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='SubCenter', alignment=1, fontSize=10, leading=14, fontName='Helvetica'))
+    styles.add(ParagraphStyle(name='WarrantRed', alignment=1, fontSize=13, leading=17, fontName='Helvetica-Bold', textColor=colors.HexColor('#DC2626')))
+
+    story = []
+
+    # State Emblem & Seal Header
+    story.append(Paragraph("<b>GOVERNMENT OF INDIA • MINISTRY OF CONSUMER AFFAIRS</b>", styles['CenterTitle']))
+    story.append(Paragraph("<b>CENTRAL & STATE LEGAL METROLOGY ENFORCEMENT SQUAD</b>", styles['SubCenter']))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("<b>ORDER OF SEARCH, SEIZURE & PHYSICAL RAID</b>", styles['WarrantRed']))
+    story.append(Paragraph("<i>Issued under Section 15 & Section 36 of the Legal Metrology Act, 2009</i>", styles['SubCenter']))
+    story.append(Spacer(1, 16))
+
+    # Warrant Meta Table
+    officer_id = enforcement_data.get("officer_id", "MAH-LM-HQ-SQ4")
+    score = enforcement_data.get("current_vidhiscore", 340)
+    tier = enforcement_data.get("tier_name", "Defaulter (Red Flag)")
+    order_no = f"VS-ENF-{action_id}-{datetime.now().strftime('%Y%m%d')}"
+
+    meta_table_data = [
+        ['Warrant Order No:', order_no, 'Authorization Date:', datetime.now().strftime('%d %b %Y, %H:%M IST')],
+        ['Target Enterprise:', company_name, 'Registration / GSTIN:', enforcement_data.get("gstin", "27AABCK9999P1Z1")],
+        ['Operating Address:', enforcement_data.get("address", "Thane-Bhiwandi Industrial Complex, Maharashtra"), 'VidhiScore Status:', f"{score}/1000 ({tier})"],
+        ['Squad Commander:', officer_id, 'Enforcement Priority:', 'HIGH - IMMEDIATE INTERDICTION']
+    ]
+
+    t_meta = Table(meta_table_data, colWidths=[120, 160, 110, 130])
+    t_meta.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTNAME', (2,0), (2,-1), 'Helvetica-Bold'),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FEF2F2')),
+        ('TEXTCOLOR', (3,2), (3,2), colors.HexColor('#B91C1C')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#FCA5A5')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(t_meta)
+    story.append(Spacer(1, 14))
+
+    # Body
+    reason = enforcement_data.get("reason", "Repeated Section 36(2) retail overcharging and date manipulation detected across multiple independent inspections.")
+    officer_notes = enforcement_data.get("officer_notes", "Physical seizure of non-compliant batches authorized immediately.")
+
+    body_text = f"""
+    <b>WHEREAS</b>, the electronic surveillance grid of <b>VidhiScan Legal Metrology System</b> has registered 
+    critical non-compliance incidents against the aforementioned enterprise, causing its national 
+    <b>VidhiScore™</b> to degenerate to <b>{score} / 1000</b> (classified under Defaulter / Watchlist Tier);<br/><br/>
+    <b>AND WHEREAS</b>, reliable statutory evidence demonstrates deliberate violations including:<br/>
+    <font color='#B91C1C'>• {reason}</font><br/><br/>
+    <b>NOW THEREFORE</b>, in exercise of powers conferred under <b>Section 15 of the Legal Metrology Act, 2009</b>, 
+    the Authorized Legal Metrology Inspection Squad is hereby commanded to:<br/>
+    1. Enter and inspect any premises, godowns, retail distribution points, or manufacturing plants of the target enterprise without prior notice.<br/>
+    2. Seize and confiscate all packaging commodities, labelling stamps, and altered goods violating Rule 6 & Rule 7.<br/>
+    3. Impound registers, electronic records, and invoices substantiating overcharging or date alterations.<br/>
+    4. Issue statutory Seizure Memorandum and summon authorized signatories for formal compounding proceedings within 48 hours.
+    """
+    story.append(Paragraph(body_text, styles['Normal']))
+    story.append(Spacer(1, 14))
+
+    # Notes Box
+    notes_table = Table([
+        ["OFFICER DIRECTIVES & SPECIAL INSTRUCTIONS:", officer_notes]
+    ], colWidths=[200, 320])
+    notes_table.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F3F4F6')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#9CA3AF')),
+        ('PADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(notes_table)
+    story.append(Spacer(1, 24))
+
+    # Signatures
+    sign_data = [
+        ['[DIGITALLY SEALED]', '[AUTHORIZED ISSUING MAGISTRATE / CONTROLLER]'],
+        ['VidhiScan Central Trust Ledger', 'Department of Legal Metrology, State Enforcement'],
+        [f"Hash: SHA256-{datetime.now().strftime('%Y%m%d%H%M%S')}-VS-ENF", f"Officer Seal: {officer_id}"]
+    ]
+    t_sign = Table(sign_data, colWidths=[260, 260])
+    t_sign.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('LINEABOVE', (0,0), (-1,0), 1, colors.black),
+    ]))
+    story.append(t_sign)
+
+    doc.build(story)
+    web_path = filepath.replace("\\", "/")
+    return f"/{web_path.lstrip('/')}"

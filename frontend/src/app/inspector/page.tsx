@@ -32,7 +32,9 @@ import {
   SlidersHorizontal,
   Sparkles,
   ExternalLink,
+  Download,
 } from "lucide-react";
+import VidhiBadge from "@/components/VidhiBadge";
 
 interface ClaimedStatus {
   status: "idle" | "claimed" | "en_route" | "on_site" | "seized" | "dismissed";
@@ -48,8 +50,9 @@ function formatCurrency(val: any, fallback = "0.00"): string {
 }
 
 export default function InspectorPortal() {
-  const [activeTab, setActiveTab] = useState<"alerts" | "scan" | "handbook">("alerts");
+  const [activeTab, setActiveTab] = useState<"alerts" | "scan" | "raids" | "handbook">("alerts");
   const [scans, setScans] = useState<any[]>([]);
+  const [raidOrders, setRaidOrders] = useState<any[]>([]);
   const [loadingScans, setLoadingScans] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
@@ -174,8 +177,36 @@ export default function InspectorPortal() {
     }
   };
 
+  const fetchRaidOrders = () => {
+    fetch("/api/enforcement?action_type=RAID_ORDER", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRaidOrders(data);
+        } else {
+          setRaidOrders([
+            {
+              id: 101,
+              company_id: 6,
+              company_name: "Kalyan Relabeling & Counterfeit Syndicate",
+              action_type: "RAID_ORDER",
+              severity: "CRITICAL",
+              status: "DISPATCHED",
+              officer_id: "MAH-LM-HQ-SQ4",
+              officer_notes: "Target godown in Bhiwandi verified storage of counterfeit batches. Enter and seize inventory under Section 15.",
+              document_url: "/static/reports/Raid_Warrant_Kalyan Relabeling  Counterfeit Syndicate_TEST-101_202609220024.pdf",
+              deadline_days: 2,
+              created_at: "Today, 10:30 AM"
+            }
+          ]);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchScans();
+    fetchRaidOrders();
   }, []);
 
   const getGpsLocation = (): Promise<{ lat?: number; lng?: number }> => {
@@ -473,7 +504,7 @@ export default function InspectorPortal() {
       </div>
 
       {/* 3. SEGMENTED TACTICAL WORKSPACE NAVIGATION */}
-      <div className="grid grid-cols-3 bg-surface-tint/60 p-1.5 rounded-sidebar border border-border shadow-xs text-xs md:text-sm font-mono">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 bg-surface-tint/60 p-1.5 rounded-sidebar border border-border shadow-xs text-xs md:text-sm font-mono">
         {/* Tab 1: Citizen Intel Feed */}
         <button
           onClick={() => setActiveTab("alerts")}
@@ -484,7 +515,7 @@ export default function InspectorPortal() {
           }`}
         >
           <BadgeAlert className={`w-4 h-4 ${activeTab === "alerts" ? "text-tile-peach-fg" : "text-ink-400"}`} />
-          <span>Citizen Intel Feed</span>
+          <span>Citizen Alerts</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-tile-peach-bg text-tile-peach-fg border border-tile-peach-fg/30">
             {activeViolationsCount}
           </span>
@@ -500,7 +531,7 @@ export default function InspectorPortal() {
           }`}
         >
           <Camera className={`w-4 h-4 ${activeTab === "scan" ? "text-ink-900" : "text-ink-400"}`} />
-          <span>Official Seizure Scan</span>
+          <span>Official Scan</span>
           {linkedCaseId && (
             <span className="px-1.5 py-0.2 rounded-chip bg-lime-400 text-ink-900 font-semibold text-[9px]">
               Case #{linkedCaseId}
@@ -508,7 +539,23 @@ export default function InspectorPortal() {
           )}
         </button>
 
-        {/* Tab 3: Legal Metrology Handbook */}
+        {/* Tab 3: Priority Raid Warrants */}
+        <button
+          onClick={() => setActiveTab("raids")}
+          className={`py-2.5 rounded-[10px] transition-all flex items-center justify-center space-x-2 ${
+            activeTab === "raids"
+              ? "bg-red-600 text-white font-semibold shadow-xs"
+              : "text-red-700 hover:text-red-900 hover:bg-red-50 font-normal"
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4" />
+          <span>Raid Warrants</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white text-red-700 font-mono">
+            {raidOrders.length}
+          </span>
+        </button>
+
+        {/* Tab 4: Legal Metrology Handbook */}
         <button
           onClick={() => setActiveTab("handbook")}
           className={`py-2.5 rounded-[10px] transition-all flex items-center justify-center space-x-2 ${
@@ -521,6 +568,74 @@ export default function InspectorPortal() {
           <span>Legal Handbook</span>
         </button>
       </div>
+
+      {/* ============================================================== */}
+      {/* TAB 3: ACTIVE RAID WARRANTS & SEIZURE ORDERS                   */}
+      {/* ============================================================== */}
+      {activeTab === "raids" && (
+        <div className="space-y-4">
+          <div className="bg-surface-solid border border-red-200 p-5 rounded-card shadow-soft space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
+              <h3 className="font-semibold text-base text-ink-900 flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-600" />
+                <span>Statutory Search & Seizure Warrants (Section 15, LM Act 2009)</span>
+              </h3>
+            </div>
+            <p className="text-xs text-ink-500 font-mono">
+              Authorized entry and physical raid orders dispatched to Flying Squad #04. Print or carry digital copy during execution.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {raidOrders.length > 0 ? (
+              raidOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="p-5 rounded-card border border-red-300 bg-white shadow-soft flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+                        WARRANT #{order.id} • SECTION 15
+                      </span>
+                      <span className="text-xs font-bold text-ink-900">{order.company_name}</span>
+                    </div>
+
+                    <p className="text-xs text-ink-600 leading-relaxed max-w-2xl font-mono">
+                      {order.officer_notes || "Immediate raid and inventory seizure authorized."}
+                    </p>
+
+                    <div className="flex items-center gap-4 text-[11px] text-ink-400 font-mono pt-1">
+                      <span>Assigned Squad: {order.officer_id}</span>
+                      <span>Execution Window: 48 Hours</span>
+                      <span>Issued: {order.created_at}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                    {order.document_url && (
+                      <a
+                        href={order.document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn--primary bg-red-600 hover:bg-red-700 text-white h-9 px-3.5 rounded-control text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download Warrant PDF</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-12 text-center text-xs text-ink-400 border border-border rounded-card bg-surface-solid font-mono">
+                No outstanding raid warrants pending execution for this sector.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* TAB 1: CITIZEN INTELLIGENCE ALERTS FEED                        */}

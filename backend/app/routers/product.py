@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
+import re
 
 from ..database import get_db
-from ..models import ProductRegistry
+from ..models import ProductRegistry, Company
 
 router = APIRouter(
     prefix="/products",
@@ -18,6 +19,8 @@ class ProductCreate(BaseModel):
     official_mrp: float
     net_weight: str
     shelf_life_days: Optional[int] = 365
+    category: Optional[str] = "Packaged Goods"
+    company_id: Optional[int] = None
 
 class ProductOut(BaseModel):
     id: int
@@ -27,6 +30,8 @@ class ProductOut(BaseModel):
     official_mrp: float
     net_weight: str
     shelf_life_days: Optional[int] = None
+    category: Optional[str] = None
+    company_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -42,11 +47,21 @@ def get_all_products(db: Session = Depends(get_db)):
 def register_new_product(product: ProductCreate, db: Session = Depends(get_db)):
     """
     Allows State Admin or Authorized Manufacturer to register official commodity specs.
+    Auto-links product to registered corporate manufacturer if matched.
     """
     if product.barcode:
         existing = db.query(ProductRegistry).filter(ProductRegistry.barcode == product.barcode).first()
         if existing:
             raise HTTPException(status_code=400, detail="Commodity with this Barcode already exists.")
+
+    comp_id = product.company_id
+    if not comp_id:
+        brand_clean = product.brand_name.strip()
+        comp = db.query(Company).filter(
+            (Company.name.ilike(f"%{brand_clean}%")) | (Company.brand_slug.ilike(f"%{brand_clean}%"))
+        ).first()
+        if comp:
+            comp_id = comp.id
 
     new_prod = ProductRegistry(
         barcode=product.barcode,
@@ -54,7 +69,9 @@ def register_new_product(product: ProductCreate, db: Session = Depends(get_db)):
         product_name=product.product_name,
         official_mrp=product.official_mrp,
         net_weight=product.net_weight,
-        shelf_life_days=product.shelf_life_days
+        shelf_life_days=product.shelf_life_days,
+        category=product.category or "Packaged Goods",
+        company_id=comp_id
     )
     db.add(new_prod)
     db.commit()
@@ -86,7 +103,9 @@ def verify_commodity_compliance(db: Session, text: str, scanned_mrp: Optional[fl
             "registry_status": "UNREGISTERED_COMMODITY",
             "message": "Commodity not yet listed in Central Master Registry. Rule 6 baseline applied.",
             "price_discrepancy": 0.0,
-            "is_overcharged": False
+            "is_overcharged": False,
+            "product_id": None,
+            "company_id": None
         }
 
     # Cross-reference price
@@ -100,6 +119,8 @@ def verify_commodity_compliance(db: Session, text: str, scanned_mrp: Optional[fl
 
     return {
         "registry_status": "MATCHED_MASTER_REGISTRY",
+        "product_id": matched_product.id,
+        "company_id": matched_product.company_id,
         "registered_brand": matched_product.brand_name,
         "registered_product": matched_product.product_name,
         "official_mrp": matched_product.official_mrp,
