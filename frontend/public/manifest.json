@@ -1,0 +1,26 @@
+{
+  "name": "VidhiScan | Legal Metrology AI",
+  "short_name": "VidhiScan",
+  "description": "AI-Powered Statutory Compliance Verification of Packaged Commodities",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#EDEDFB",
+  "theme_color": "#10B981",
+  "categories": ["utilities", "business", "government"],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

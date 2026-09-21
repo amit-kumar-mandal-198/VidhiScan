@@ -1,0 +1,197 @@
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from sqlalchemy.orm import Session
+import shutil
+import os
+import re
+import uuid
+from datetime import datetime
+
+from ..database import get_db
+from ..models import ScanReport
+from ..ai_engine import analyze_label
+
+router = APIRouter(
+    prefix="/scans",
+    tags=["Scans"]
+)
+
+UPLOAD_DIR = "static/uploads"
+
+@router.get("/")
+def list_scans(limit: int = 20, db: Session = Depends(get_db)):
+    """
+    Returns recent scans for inspector review.
+    """
+    scans = db.query(ScanReport).order_by(ScanReport.id.desc()).limit(limit).all()
+    return scans
+
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+
+import cv2
+from .product import verify_commodity_compliance
+
+def detect_barcode_from_image(image_path: str):
+    try:
+        img = cv2.imread(image_path)
+        if img is None:
+            return None
+        if hasattr(cv2, 'barcode'):
+            bd = cv2.barcode.BarcodeDetector()
+            ok, decoded_info, decoded_type, _ = bd.detectAndDecode(img)
+            if ok and decoded_info and len(decoded_info[0]) > 0:
+                return str(decoded_info[0]).strip()
+        qd = cv2.QRCodeDetector()
+        data, _, _ = qd.detectAndDecode(img)
+        if data:
+            return str(data).strip()
+    except Exception:
+        pass
+    return None
+
+from typing import Optional
+
+@router.post("/upload")
+async def upload_and_scan(
+    file: UploadFile = File(...),
+    inspected_by: str = Form("Public"),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    location_name: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint for the public or inspector to upload a product image.
+    Saves the image locally, extracts GPS coordinates, runs OCR + Rule Engine,
+    decodes barcodes, and cross-checks with Government Master Registry.
+    """
+    # 1. Save File
+    file_extension = file.filename.split('.')[-1]
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # 2. Run AI Engine (EasyOCR + Regex)
+    try:
+        ai_result = analyze_label(file_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
+    
+    verdict = ai_result["verdict"]
+
+    # 3. Barcode Detection
+    barcode = detect_barcode_from_image(file_path)
+    if not barcode:
+        barcode = ai_result.get("barcode_detected") or verdict.get("barcode")
+    ai_result["barcode_detected"] = barcode
+
+    # Clean numeric MRP for database & registry check
+    clean_mrp = None
+    if verdict.get("scanned_mrp") is not None:
+        try:
+            clean_mrp = float(verdict["scanned_mrp"])
+        except Exception:
+            clean_mrp = None
+    elif verdict.get("mrp"):
+        try:
+            clean_mrp = float(re.sub(r"[^\d.]", "", str(verdict["mrp"])))
+        except Exception:
+            clean_mrp = None
+    verdict["scanned_mrp"] = clean_mrp
+
+    # 4. Cross-Reference against Government Master Registry
+    registry_check = verify_commodity_compliance(db, ai_result["raw_text"], clean_mrp, barcode)
+    ai_result["master_registry"] = registry_check
+
+    # If product matched master registry, ensure registered net weight and brand are reflected
+    if registry_check.get("registry_status") == "MATCHED_MASTER_REGISTRY":
+        off_net_qty = registry_check.get("official_net_weight")
+        if off_net_qty:
+            if not verdict.get("net_weight") or verdict["declarations"]["rule_2_net_qty"]["status"] == "MISSING":
+                verdict["net_weight"] = off_net_qty
+                verdict["declarations"]["rule_2_net_qty"]["value"] = off_net_qty
+                verdict["declarations"]["rule_2_net_qty"]["status"] = "COMPLIANT"
+                verdict["violations"] = [v for v in verdict.get("violations", []) if "Rule 6(1)(b)" not in v and "Net Quantity" not in v]
+
+        if not verdict.get("manufacturer") or verdict["declarations"]["rule_1_mfg_name"]["status"] == "MISSING":
+            verdict["manufacturer"] = registry_check.get("registered_brand")
+            verdict["declarations"]["rule_1_mfg_name"]["value"] = registry_check.get("registered_brand")
+            verdict["declarations"]["rule_1_mfg_name"]["status"] = "COMPLIANT"
+            verdict["violations"] = [v for v in verdict.get("violations", []) if "Rule 6(1)(a)" not in v and "Manufacturer" not in v]
+
+        # Recount passed rules and re-evaluate compliance
+        passed_count = sum(1 for d in verdict["declarations"].values() if d["status"] in ["COMPLIANT", "PROVISO_COMPLIANT"])
+        verdict["rules_passed"] = passed_count
+        verdict["compliance_score"] = round((passed_count / len(verdict["declarations"])) * 100)
+
+    if registry_check.get("is_overcharged"):
+        diff = registry_check["price_discrepancy"]
+        off_mrp = registry_check["official_mrp"]
+        overcharge_msg = f"Section 36(2) Retail Overcharging: Scanned ₹{clean_mrp} exceeds Legal Max MRP ₹{off_mrp} (+₹{diff})"
+        verdict["violations"].insert(0, overcharge_msg)
+        verdict["is_compliant"] = False
+        verdict["compliance_score"] = max(0, verdict["compliance_score"] - 30)
+    elif passed_count >= 7:
+        verdict["is_compliant"] = True
+    
+    # 5. Determine Fraud Type
+    fraud_type = None
+    if not verdict["is_compliant"]:
+        fraud_type = ", ".join(verdict["violations"])
+        
+    # 6. Save to Database
+    db_scan = ScanReport(
+        image_path=f"/{file_path}",
+        barcode_detected=barcode,
+        scanned_mrp=clean_mrp,
+        scanned_mfg_date=str(verdict.get("mfg_date") or ""),
+        scanned_exp_date=str(verdict.get("exp_date") or ""),
+        scanned_net_weight=str(verdict.get("net_weight") or ""),
+        is_compliant=bool(verdict.get("is_compliant", False)),
+        fraud_type=fraud_type,
+        inspected_by=inspected_by,
+        latitude=latitude,
+        longitude=longitude,
+        location_name=location_name,
+    )
+    
+    db.add(db_scan)
+    db.commit()
+    db.refresh(db_scan)
+    
+    return {
+        "scan_id": db_scan.id,
+        "image_url": db_scan.image_path,
+        "ai_analysis": ai_result
+    }
+
+from ..pdf_generator import generate_legal_notice
+
+@router.post("/{scan_id}/generate-notice")
+async def create_notice(scan_id: int, db: Session = Depends(get_db)):
+    """
+    Generates a PDF legal notice for a specific scan.
+    """
+    scan_report = db.query(ScanReport).filter(ScanReport.id == scan_id).first()
+    if not scan_report:
+        raise HTTPException(status_code=404, detail="Scan not found")
+        
+    if scan_report.is_compliant:
+        raise HTTPException(status_code=400, detail="Cannot generate notice for a compliant product.")
+        
+    scan_data = {
+        "scan_id": scan_report.id,
+        "fraud_type": scan_report.fraud_type,
+        "scanned_mrp": scan_report.scanned_mrp,
+        "scanned_mfg_date": scan_report.scanned_mfg_date,
+        "scanned_exp_date": scan_report.scanned_exp_date,
+        "scanned_net_weight": scan_report.scanned_net_weight
+    }
+    
+    pdf_url = generate_legal_notice(scan_data)
+    scan_report.notice_url = pdf_url
+    db.commit()
+    db.refresh(scan_report)
+    
+    return {"status": "success", "pdf_url": pdf_url}

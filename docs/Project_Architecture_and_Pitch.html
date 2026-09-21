@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VidhiScan - Project Architecture & Pitch Blueprint</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #f9f9f9;
+        }
+        .container {
+            background: #fff;
+            padding: 50px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1a365d; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; margin-top: 30px; }
+        h3 { color: #2c5282; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 10px; }
+        em { background: #ebf8ff; padding: 2px 4px; border-radius: 4px; }
+        strong { color: #2d3748; }
+        hr { border: 0; height: 1px; background: #e2e8f0; margin: 30px 0; }
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VidhiScan - Project Architecture &amp; Pitch Blueprint</h1>
+<p>This document contains the complete architectural plan, workflow, and presentation strategies for the Smart India Hackathon (SIH 2026) project: <strong>Software System to check compliance of Packaged Commodities under Legal Metrology Rules, 2011.</strong></p>
+<hr />
+<h2>1. The Core Problem</h2>
+<p>Under the Legal Metrology Act, 2009, packaged commodities must bear mandatory declarations (MRP, Net Quantity, Mfg Date, Expiry Date, Consumer Care, etc.). Currently, enforcement agencies rely on manual inspections, which is time-consuming. Non-compliance, price tampering, and expiry date fraud are rampant.</p>
+<h2>2. The Solution: VidhiScan</h2>
+<p>VidhiScan is an AI-powered Progressive Web App (PWA) that uses Optical Character Recognition (OCR) and Computer Vision to automatically scan product labels, extract text, and instantly cross-reference them against the Legal Metrology Rules, 2011 to generate compliance reports and legal notices.</p>
+<hr />
+<h2>3. The 4 Stakeholders (Role-Based Access)</h2>
+<ol>
+<li><strong>The Government (Admin):</strong> Views statewide heatmaps of violations, manages the Master Registry, and tracks repeat offenders via a desktop dashboard.</li>
+<li><strong>The Manufacturer (Data Provider):</strong> Registers their products (Barcode, MRP, Shelf Life) into the government portal before launch.</li>
+<li><strong>The Inspector (Enforcement):</strong> Uses the mobile PWA to scan products in shops. Generates official PDF legal notices on the spot.</li>
+<li><strong>The Citizen (Crowdsourcing - Bonus Feature):</strong> Normal citizens can use the public portal to scan products without an account. If they detect fraud (e.g., overcharging), they can report it to the Inspector's dashboard.</li>
+</ol>
+<hr />
+<h2>4. Tech Stack (100% Free &amp; Open Source)</h2>
+<ul>
+<li><strong>Frontend:</strong> Next.js (React) configured as a PWA (Progressive Web App). Tailwind CSS and Shadcn UI for a fast, modern design.</li>
+<li><strong>Backend:</strong> FastAPI (Python) for asynchronous, high-performance API routing.</li>
+<li><strong>Database:</strong> SQLite (local) via SQLAlchemy ORM (easily migrates to PostgreSQL later).</li>
+<li><strong>Message Queue (Scalability):</strong> Redis + Celery to queue image processing so the server doesn't crash if 1,000 users upload photos at the same time.</li>
+<li><strong>AI / Forensics Engine:</strong></li>
+<li><strong>EasyOCR:</strong> Deep-learning text extraction.</li>
+<li><strong>OpenCV:</strong> Image forensics (detecting tampered stickers, smudged ink).</li>
+<li><strong>spaCy/Regex:</strong> NLP to map messy text to the 8 mandatory rules.</li>
+<li><strong>Reporting:</strong> ReportLab (Python) for generating PDF notices.</li>
+</ul>
+<hr />
+<h2>5. The Master Workflow</h2>
+<ol>
+<li><strong>Manufacturer Registry:</strong> Nestlé registers "Maggi 70g" with an MRP of ₹14 and a 9-month shelf life.</li>
+<li><strong>Public Tip (Crowdsourced):</strong> A citizen scans a Maggi packet at a local store selling for ₹20. The AI detects the MRP mismatch. The citizen clicks "Report to Government." (OTP verified once to prevent spam).</li>
+<li><strong>Inspector Action:</strong> The Inspector sees the "Public Alert" on their dashboard, visits the store, does an official scan, and clicks "Generate Notice."</li>
+<li><strong>Legal Notice:</strong> The backend instantly generates a PDF citing the Legal Metrology Rules, 2011, and emails/WhatsApp's it to the shopkeeper.</li>
+</ol>
+<hr />
+<h2>6. Real-World Case Study (Pitch Material)</h2>
+<ul>
+<li><strong>The Incident (Sept 2026):</strong> Maharashtra FDA Commissioner Tukaram Mundhe busted a ₹75 Lakh racket in Navi Mumbai where criminals erased expiry dates and pasted fake stickers on instant noodles and mayonnaise.</li>
+<li><strong>The VidhiScan Pitch:</strong> <em>"If VidhiScan was active, our OpenCV Forensics Engine would have instantly detected the smudged ink and the unnatural rectangular border of the fake sticker. We would have flagged this ₹75 lakh scam automatically on the spot."</em></li>
+</ul>
+<hr />
+<h2>7. Overcoming Hackathon Challenges (Loopholes Addressed)</h2>
+<ol>
+<li><strong>The "Cold Start" Problem:</strong> How do we get old products into the new system?</li>
+<li><em>Solution:</em> Bulk CSV uploads for companies, API integration with GS1 India (DataKart), and an "AI Auto-Discover" mode when unregistered barcodes are scanned.</li>
+<li><strong>Fake Image Spam (The Revenge Loophole):</strong></li>
+<li><em>Solution:</em> Public can only use the Live Camera (no gallery uploads). EXIF metadata is checked. 1-time OTP verification required to report.</li>
+<li><strong>AI Hallucinations (Bad OCR):</strong></li>
+<li><em>Solution:</em> "Human-in-the-loop". The AI doesn't fine anyone; it only alerts the Inspector, who makes the final call.</li>
+<li><strong>No Internet in Supermarkets:</strong></li>
+<li><em>Solution:</em> The Inspector PWA has an <strong>Offline Mode</strong> that caches photos locally and syncs them to the AI when a 4G/5G connection is restored.</li>
+<li><strong>High Traffic Server Crashes:</strong></li>
+<li><em>Solution:</em> Frontend image compression (10MB -&gt; 500KB) and Redis message queues to process images asynchronously.</li>
+</ol>
+<hr />
+<h2>8. The "God Mode" Demo Strategy</h2>
+<p>To ensure a flawless presentation for the judges, the login screen will feature a "Demo Mode" with 3 buttons:
+1. Enter as Citizen
+2. Enter as Inspector
+3. Enter as Admin</p>
+<p>Clicking these will instantly bypass the password screen and drop the judges into the respective dashboards, allowing them to test the Role-Based Access Control in seconds without friction.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+easyocr
+opencv-python-headless
+spacy
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+reportlab
+google-generativeai
+python-dotenv
+pillow
+numpy
+requests
