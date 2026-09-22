@@ -137,6 +137,9 @@ export default function PublicPortal() {
   const [showBountyModal, setShowBountyModal] = useState(false);
   const [bountyClaimed, setBountyClaimed] = useState(false);
 
+  // Progressive disclosure tab for scan results: "price" | "audit" | "legal"
+  const [resultTab, setResultTab] = useState<"price" | "audit" | "legal">("price");
+
   // Voice narration synthesizer
   const handlePlayVoiceSummary = () => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -931,11 +934,11 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
 
             {/* Live Verdict & Inspection Results */}
             {scanResult && !isUploading && (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 
-                {/* Master Verdict Banner */}
+                {/* 1. Master Verdict Banner (Always Visible) */}
                 <div
-                  className={`p-6 rounded-card border text-center space-y-2.5 shadow-soft ${
+                  className={`p-5 md:p-6 rounded-card border text-center space-y-3 shadow-soft ${
                     scanResult.is_compliant
                       ? "bg-tile-mint-bg/40 border-tile-mint-fg/30 text-ink-900"
                       : "bg-tile-peach-bg/40 border-tile-peach-fg/30 text-ink-900"
@@ -960,10 +963,10 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       : "Illegal price overwrite or omitted statutory declarations detected under Rule 6 and Section 36."}
                   </p>
 
-                  {/* Score Meter */}
-                  <div className="pt-1 max-w-xs mx-auto space-y-1.5">
+                  {/* Score Meter & Quick Price Pill */}
+                  <div className="pt-1 max-w-sm mx-auto space-y-2">
                     <div className="flex justify-between text-xs font-mono font-medium">
-                      <span className="text-ink-500">Statutory Compliance Score</span>
+                      <span className="text-ink-500">Compliance score</span>
                       <span className="font-semibold text-ink-900">
                         {scanResult.compliance_score || 50}% ({scanResult.rules_passed || 4}/8 rules met)
                       </span>
@@ -976,360 +979,427 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                         style={{ width: `${scanResult.compliance_score || 50}%` }}
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* Brand VidhiScore™ & Trust Badge Card */}
-                {companyProfile && (
-                  <div className="p-4 rounded-card border border-border bg-white/95 shadow-soft space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-ink-700" />
-                        <span className="font-semibold text-xs text-ink-900">
-                          Manufacturer: {companyProfile.company_name}
+                    {/* Fast Quick Status Strip */}
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      {masterRegistry && (
+                        <span className={`text-[11px] font-mono px-2.5 py-1 rounded-chip border font-semibold ${
+                          masterRegistry.is_overcharged
+                            ? "bg-red-100 text-red-800 border-red-300"
+                            : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        }`}>
+                          {masterRegistry.is_overcharged
+                            ? `⚠️ Overcharged by ₹${formatCurrency(masterRegistry.price_discrepancy)}`
+                            : `✓ Clean MRP: ₹${formatCurrency(scanResult.scanned_mrp || masterRegistry.official_mrp)}`}
                         </span>
-                      </div>
-                      <VidhiBadge
-                        score={companyProfile.current_vidhiscore}
-                        badgeCode={companyProfile.badge_code}
-                        tierName={companyProfile.tier_name}
-                        size="sm"
-                        isBlacklisted={companyProfile.is_blacklisted}
-                      />
-                    </div>
+                      )}
 
-                    {companyProfile.score_update && (
-                      <div
-                        className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between ${
-                          companyProfile.score_update.points_delta > 0
-                            ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
-                            : companyProfile.score_update.points_delta < 0
-                            ? "bg-red-50/80 border-red-200 text-red-900 animate-pulse"
-                            : "bg-surface-base border-border text-ink-700"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {companyProfile.score_update.points_delta < 0 ? (
-                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                          ) : (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          )}
-                          <span className="text-[11px] leading-tight">
-                            {companyProfile.score_update.reason}
-                          </span>
-                        </div>
-                        <span className="font-bold shrink-0 ml-2">
-                          {companyProfile.score_update.points_delta > 0
-                            ? `+${companyProfile.score_update.points_delta} pts`
-                            : `${companyProfile.score_update.points_delta} pts`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Bharat-First Multilingual Accessibility & Voice Audio Deck */}
-                <div className="p-4 rounded-card border border-border bg-surface-solid shadow-soft space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
-                    <div className="flex items-center gap-2">
-                      <Languages className="w-4 h-4 text-tile-indigo-fg" />
-                      <span className="font-semibold text-xs text-ink-900">
-                        Bharat-First Multilingual & Voice Audio Deck
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono text-ink-500 bg-surface-base px-2 py-0.5 rounded border border-border self-start sm:self-auto">
-                      Voice Synthesis for Rural Consumers
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    {/* Language Pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      {[
-                        { id: "hi", label: "हिन्दी (Hindi)" },
-                        { id: "en", label: "English" },
-                        { id: "ta", label: "தமிழ் (Tamil)" },
-                        { id: "bn", label: "বাংলা (Bengali)" },
-                        { id: "mr", label: "मराठी (Marathi)" },
-                      ].map((lang) => (
-                        <button
-                          key={lang.id}
-                          onClick={() => {
-                            setSelectedLang(lang.id as any);
-                            if (isPlayingAudio) window.speechSynthesis?.cancel();
-                            setIsPlayingAudio(false);
-                          }}
-                          className={`px-2.5 py-1 rounded-md font-semibold text-[11px] transition-all ${
-                            selectedLang === lang.id
-                              ? "bg-ink-900 text-white shadow-2xs"
-                              : "bg-surface-base border border-border text-ink-600 hover:text-ink-900"
-                          }`}
-                        >
-                          {lang.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Audio Play Button */}
-                    <button
-                      onClick={handlePlayVoiceSummary}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shadow-xs ${
-                        isPlayingAudio
-                          ? "bg-red-600 text-white animate-pulse"
-                          : "bg-tile-indigo-bg text-tile-indigo-fg border border-tile-indigo-fg/30 hover:bg-tile-indigo-bg/80"
-                      }`}
-                    >
-                      {isPlayingAudio ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                      <span>{isPlayingAudio ? "Stop Voice Narration" : "Play Statutory Voice Narration"}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Jan-Prahari Citizen Whistleblower Bounty Claim Card */}
-                {(!scanResult.is_compliant || masterRegistry?.is_overcharged) && (
-                  <div className="p-4 rounded-card border-2 border-amber-300 bg-amber-50/70 shadow-soft space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-5 h-5 text-amber-600 shrink-0" />
-                        <div>
-                          <h4 className="font-bold text-xs text-amber-950">
-                            Jan-Prahari Whistleblower Bounty Eligible!
-                          </h4>
-                          <p className="text-[11px] text-amber-800">
-                            Confirmed Section 36 violation entitles you to an official ₹500 Government Direct Benefit Transfer (DBT) reward.
-                          </p>
-                        </div>
-                      </div>
-
+                      {/* Quick Voice Audio Trigger */}
                       <button
-                        onClick={() => setShowBountyModal(true)}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+                        onClick={handlePlayVoiceSummary}
+                        className={`px-2.5 py-1 rounded-chip text-[11px] font-mono font-semibold transition-all flex items-center gap-1 border shadow-2xs ${
+                          isPlayingAudio
+                            ? "bg-red-600 text-white border-red-700 animate-pulse"
+                            : "bg-white text-ink-700 border-border hover:bg-surface-tint"
+                        }`}
+                        title="Voice Audio Summary"
                       >
-                        <Award className="w-4 h-4 text-amber-200" />
-                        <span>Claim ₹500 Citizen Bounty</span>
+                        {isPlayingAudio ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-tile-indigo-fg" />}
+                        <span>{isPlayingAudio ? "Stop Audio" : "Play Voice Summary"}</span>
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Jan-Prahari Citizen Whistleblower Bounty Card (if overcharged/violation) */}
+                {(!scanResult.is_compliant || masterRegistry?.is_overcharged) && (
+                  <div className="p-3.5 rounded-card border-2 border-amber-300 bg-amber-50/80 shadow-soft flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 text-left">
+                      <Gift className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div className="text-xs">
+                        <span className="font-bold text-amber-950">Jan-Prahari Citizen Bounty Eligible: </span>
+                        <span className="text-amber-900">Confirmed violation qualifies for ₹500 DBT reward.</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowBountyModal(true)}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-stretch sm:self-auto justify-center"
+                    >
+                      <Award className="w-3.5 h-3.5 text-amber-200" />
+                      <span>Claim ₹500 Bounty</span>
+                    </button>
+                  </div>
                 )}
 
-                {/* Central Registry Price Comparison & Overcharge Card */}
-                {masterRegistry && (
-                  <div
-                    className={`p-4 rounded-card border text-xs space-y-3 shadow-soft font-mono ${
-                      masterRegistry.is_overcharged
-                        ? "bg-tile-peach-bg/30 border-tile-peach-fg/40 text-ink-900"
-                        : "bg-tile-mint-bg/30 border-tile-mint-fg/40 text-ink-900"
+                {/* 2. Progressive Disclosure Tab Bar */}
+                <div className="flex items-center p-1 bg-surface-tint rounded-sidebar border border-border text-xs font-mono">
+                  <button
+                    onClick={() => setResultTab("price")}
+                    className={`flex-1 py-2 rounded-control transition-all flex items-center justify-center gap-1.5 ${
+                      resultTab === "price"
+                        ? "bg-surface-solid text-ink-900 font-bold shadow-xs border border-border"
+                        : "text-ink-500 hover:text-ink-900"
                     }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold flex items-center space-x-1.5 text-xs">
-                        {masterRegistry.is_overcharged ? (
-                          <AlertTriangle className="w-4 h-4 text-tile-peach-fg" />
-                        ) : (
-                          <Award className="w-4 h-4 text-tile-mint-fg" />
-                        )}
-                        <span>Central FMCG Database Price Cross-Check</span>
-                      </span>
-                      <span className="font-mono text-[10px] bg-surface-solid px-2.5 py-0.5 rounded-chip border border-border font-semibold text-ink-900">
-                        {masterRegistry.registered_brand}
-                      </span>
-                    </div>
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>Price & Action</span>
+                  </button>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
-                      <div className="p-2 bg-white/80 rounded-control border border-border">
-                        <span className="text-ink-500 text-[10px] block">Official Approved MRP:</span>
-                        <span className="font-semibold text-ink-900 text-sm">
-                          ₹ {formatCurrency(masterRegistry.official_mrp)}
-                        </span>
-                      </div>
-                      <div className="p-2 bg-white/80 rounded-control border border-border">
-                        <span className="text-ink-500 text-[10px] block">Detected Shelf Price:</span>
-                        <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg" : "text-ink-900"}`}>
-                          ₹ {formatCurrency(scanResult.scanned_mrp)}
-                        </span>
-                      </div>
-                    </div>
+                  <button
+                    onClick={() => setResultTab("audit")}
+                    className={`flex-1 py-2 rounded-control transition-all flex items-center justify-center gap-1.5 ${
+                      resultTab === "audit"
+                        ? "bg-surface-solid text-ink-900 font-bold shadow-xs border border-border"
+                        : "text-ink-500 hover:text-ink-900"
+                    }`}
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>Rule 6 Audit ({scanResult.rules_passed || 4}/8)</span>
+                  </button>
 
-                    {/* Overcharge Details & Redressal Trigger */}
-                    {masterRegistry.is_overcharged ? (
-                      <div className="p-3 rounded-control bg-tile-peach-bg/80 border border-tile-peach-fg/30 space-y-2">
+                  <button
+                    onClick={() => setResultTab("legal")}
+                    className={`flex-1 py-2 rounded-control transition-all flex items-center justify-center gap-1.5 ${
+                      resultTab === "legal"
+                        ? "bg-surface-solid text-ink-900 font-bold shadow-xs border border-border"
+                        : "text-ink-500 hover:text-ink-900"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Legal Notice</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: PRICE & CONSUMER ACTION */}
+                {resultTab === "price" && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    {/* Central Registry Price Comparison & Overcharge Card */}
+                    {masterRegistry && (
+                      <div
+                        className={`p-4 rounded-card border text-xs space-y-3 shadow-soft font-mono ${
+                          masterRegistry.is_overcharged
+                            ? "bg-tile-peach-bg/30 border-tile-peach-fg/40 text-ink-900"
+                            : "bg-tile-mint-bg/30 border-tile-mint-fg/40 text-ink-900"
+                        }`}
+                      >
                         <div className="flex justify-between items-center">
-                          <p className="text-tile-peach-fg font-bold text-xs flex items-center gap-1">
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Section 36(2) Overcharge Offence</span>
-                          </p>
-                          <span className="text-tile-peach-fg font-bold">
-                            +₹ {formatCurrency(masterRegistry.price_discrepancy)} Illegal Markup
+                          <span className="font-semibold flex items-center space-x-1.5 text-xs">
+                            {masterRegistry.is_overcharged ? (
+                              <AlertTriangle className="w-4 h-4 text-tile-peach-fg" />
+                            ) : (
+                              <Award className="w-4 h-4 text-tile-mint-fg" />
+                            )}
+                            <span>Central FMCG Master Registry Price Check</span>
+                          </span>
+                          <span className="font-mono text-[10px] bg-surface-solid px-2.5 py-0.5 rounded-chip border border-border font-semibold text-ink-900">
+                            {masterRegistry.registered_brand}
                           </span>
                         </div>
-                        <p className="text-ink-500 text-[11px] leading-relaxed">
-                          Retailer is charging above the government legal ceiling. Under the Consumer Protection Act, 2019, you are entitled to a full refund of this surcharge plus statutory compensation.
-                        </p>
 
-                        <button
-                          onClick={() => setShowComplaintModal(true)}
-                          className="btn btn--primary w-full h-9 justify-center text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-ink-900" />
-                          <span>Generate National Consumer Helpline (1915) Complaint</span>
-                        </button>
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
+                          <div className="p-2.5 bg-white/80 rounded-control border border-border">
+                            <span className="text-ink-500 text-[10px] block">Official Approved MRP:</span>
+                            <span className="font-semibold text-ink-900 text-sm">
+                              ₹ {formatCurrency(masterRegistry.official_mrp)}
+                            </span>
+                          </div>
+                          <div className="p-2.5 bg-white/80 rounded-control border border-border">
+                            <span className="text-ink-500 text-[10px] block">Detected Shelf Price:</span>
+                            <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
+                              ₹ {formatCurrency(scanResult.scanned_mrp)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Overcharge Details & Redressal Trigger */}
+                        {masterRegistry.is_overcharged ? (
+                          <div className="p-3 rounded-control bg-tile-peach-bg/80 border border-tile-peach-fg/30 space-y-2.5">
+                            <div className="flex justify-between items-center">
+                              <p className="text-tile-peach-fg font-bold text-xs flex items-center gap-1">
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Section 36(2) Overcharge Offence</span>
+                              </p>
+                              <span className="text-tile-peach-fg font-bold">
+                                +₹ {formatCurrency(masterRegistry.price_discrepancy)} Illegal Markup
+                              </span>
+                            </div>
+                            <p className="text-ink-500 text-[11px] leading-relaxed">
+                              Retailer is charging above the government legal ceiling. Under the Consumer Protection Act, 2019, you are entitled to a full refund of this surcharge plus statutory compensation.
+                            </p>
+
+                            <button
+                              onClick={() => setShowComplaintModal(true)}
+                              className="btn btn--primary w-full h-9 justify-center text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-ink-900" />
+                              <span>Generate National Consumer Helpline (1915) Complaint</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-tile-mint-fg font-medium text-xs flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Price verified clean: retailer is charging within statutory manufacturer limits.</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Brand VidhiScore™ & Trust Badge Card */}
+                    {companyProfile && (
+                      <div className="p-4 rounded-card border border-border bg-white shadow-soft space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-ink-700" />
+                            <span className="font-semibold text-xs text-ink-900">
+                              Brand: {companyProfile.company_name}
+                            </span>
+                          </div>
+                          <VidhiBadge
+                            score={companyProfile.current_vidhiscore}
+                            badgeCode={companyProfile.badge_code}
+                            tierName={companyProfile.tier_name}
+                            size="sm"
+                            isBlacklisted={companyProfile.is_blacklisted}
+                          />
+                        </div>
+
+                        {companyProfile.score_update && (
+                          <div
+                            className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between ${
+                              companyProfile.score_update.points_delta > 0
+                                ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                                : companyProfile.score_update.points_delta < 0
+                                ? "bg-red-50/80 border-red-200 text-red-900"
+                                : "bg-surface-base border-border text-ink-700"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {companyProfile.score_update.points_delta < 0 ? (
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              ) : (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              )}
+                              <span className="text-[11px] leading-tight">
+                                {companyProfile.score_update.reason}
+                              </span>
+                            </div>
+                            <span className="font-bold shrink-0 ml-2">
+                              {companyProfile.score_update.points_delta > 0
+                                ? `+${companyProfile.score_update.points_delta} pts`
+                                : `${companyProfile.score_update.points_delta} pts`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bharat-First Multilingual Language Options */}
+                    <div className="p-3.5 rounded-card border border-border bg-surface-solid shadow-soft flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Languages className="w-4 h-4 text-tile-indigo-fg" />
+                        <span className="font-semibold text-xs text-ink-900">Voice Language:</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1 text-xs">
+                        {[
+                          { id: "hi", label: "हिन्दी" },
+                          { id: "en", label: "English" },
+                          { id: "ta", label: "தமிழ்" },
+                          { id: "bn", label: "বাংলা" },
+                          { id: "mr", label: "मराठी" },
+                        ].map((lang) => (
+                          <button
+                            key={lang.id}
+                            onClick={() => {
+                              setSelectedLang(lang.id as any);
+                              if (isPlayingAudio) window.speechSynthesis?.cancel();
+                              setIsPlayingAudio(false);
+                            }}
+                            className={`px-2 py-0.5 rounded font-mono text-[11px] transition-all ${
+                              selectedLang === lang.id
+                                ? "bg-ink-900 text-white font-bold"
+                                : "bg-surface-base border border-border text-ink-600 hover:text-ink-900"
+                            }`}
+                          >
+                            {lang.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: RULE 6 STATUTORY DECLARATIONS AUDIT */}
+                {resultTab === "audit" && (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    <div className="flex justify-between items-center px-1">
+                      <h3 className="text-xs font-semibold text-ink-500 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                        <Scale className="w-3.5 h-3.5 text-tile-indigo-fg" />
+                        <span>Statutory Declarations Checklist (PCR 2011 Rule 6)</span>
+                      </h3>
+                      <span className="text-[10px] bg-surface-tint text-ink-900 border border-border px-2 py-0.5 rounded-chip font-mono font-medium">
+                        8 Mandates Audited
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {scanResult.declarations &&
+                        Object.entries(scanResult.declarations).map(([key, decl]: [string, any]) => {
+                          const isOk = decl.status === "COMPLIANT";
+                          const isProviso = decl.status === "PROVISO_COMPLIANT";
+                          const IconComponent = getDeclarationIcon(key, decl.rule);
+
+                          return (
+                            <div
+                              key={key}
+                              className={`p-3.5 rounded-card border text-xs flex flex-col justify-between space-y-2 transition-all shadow-soft ${
+                                isOk
+                                  ? "bg-surface-solid/90 border-border"
+                                  : isProviso
+                                  ? "bg-tile-indigo-bg/30 border-tile-indigo-fg/30"
+                                  : "bg-tile-peach-bg/30 border-tile-peach-fg/30"
+                              }`}
+                            >
+                              <div className="flex justify-between items-start space-x-2">
+                                <div className="flex items-center space-x-1.5">
+                                  <IconComponent className="w-3.5 h-3.5 text-ink-400" />
+                                  <span className="font-mono text-[10px] bg-surface-tint text-ink-500 border border-border px-1.5 py-0.5 rounded-chip font-medium">
+                                    {decl.rule}
+                                  </span>
+                                </div>
+
+                                <span
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 font-mono ${
+                                    isOk
+                                      ? "bg-tile-mint-bg text-tile-mint-fg border border-tile-mint-fg/30"
+                                      : isProviso
+                                      ? "bg-tile-indigo-bg text-tile-indigo-fg border border-tile-indigo-fg/30"
+                                      : "bg-tile-peach-bg text-tile-peach-fg border border-tile-peach-fg/30"
+                                  }`}
+                                >
+                                  {isOk ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-tile-mint-fg" />
+                                      <span>Passed</span>
+                                    </>
+                                  ) : isProviso ? (
+                                    <>
+                                      <Info className="w-3 h-3 text-tile-indigo-fg" />
+                                      <span>Proviso Ok</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="w-3 h-3 text-tile-peach-fg" />
+                                      <span>Missing</span>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+
+                              <div>
+                                <p className="font-semibold text-ink-900 text-xs">{decl.name}</p>
+                                <p className="text-ink-500 font-mono text-xs mt-0.5">
+                                  {decl.value || <span className="text-tile-peach-fg font-medium">Not declared / illegible</span>}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: LEGAL ENFORCEMENT & NOTICE */}
+                {resultTab === "legal" && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    {/* Statutory Infraction Summary */}
+                    {!scanResult.is_compliant && scanResult.violations && scanResult.violations.length > 0 ? (
+                      <div className="p-4 rounded-card bg-tile-peach-bg/50 border border-tile-peach-fg/30 space-y-2 text-xs text-ink-900 shadow-soft font-mono">
+                        <div className="flex items-center space-x-1.5 text-tile-peach-fg font-semibold">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>Statutory Offenses Under Section 36:</span>
+                        </div>
+                        <ul className="space-y-1 text-ink-500 pl-4 list-disc">
+                          {scanResult.violations.map((violation: string, idx: number) => (
+                            <li key={idx}>{violation}</li>
+                          ))}
+                        </ul>
                       </div>
                     ) : (
-                      <p className="text-tile-mint-fg font-medium text-xs flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Price verified clean: retailer is charging within statutory manufacturer limits.</span>
-                      </p>
+                      <div className="p-4 rounded-card bg-tile-mint-bg/30 border border-tile-mint-fg/30 text-xs text-ink-900 shadow-soft font-mono flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-tile-mint-fg" />
+                        <span>No statutory infractions detected. Product conforms to Legal Metrology Act provisions.</span>
+                      </div>
+                    )}
+
+                    {/* Official PDF Notice Generator */}
+                    <div className="p-4 rounded-card bg-surface-solid border border-border shadow-soft space-y-3">
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-ink-900 flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-ink-700" />
+                          <span>Official Seizure Notice & Enforcement Memorandum</span>
+                        </h4>
+                        <p className="text-[11px] text-ink-500">
+                          Auto-formatted statutory seizure notice citing Section 36 with embedded GPS coordinates and photographic evidence.
+                        </p>
+                      </div>
+
+                      {!scanResult.is_compliant && scanId && !pdfUrl && (
+                        <button
+                          onClick={generateNotice}
+                          disabled={pdfGenerating}
+                          className="btn btn--primary w-full h-11 justify-center shadow-xs font-semibold text-xs flex items-center gap-1.5"
+                        >
+                          <FileText className="w-4 h-4 text-ink-900" />
+                          <span>{pdfGenerating ? "Compiling Notice PDF..." : "Generate Official Seizure Notice (PDF)"}</span>
+                          <ArrowRight className="w-4 h-4 text-ink-900" />
+                        </button>
+                      )}
+
+                      {pdfUrl && (
+                        <a
+                          href={pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn--primary w-full h-11 justify-center shadow-xs font-semibold text-xs flex items-center gap-2"
+                        >
+                          <Download className="w-4 h-4 text-ink-900" />
+                          <span>Download Generated Seizure Notice PDF</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Raw OCR Inspection Drawer */}
+                    {rawOcrText && (
+                      <div className="pt-1 text-center">
+                        <button
+                          onClick={() => setShowRawText(!showRawText)}
+                          className="inline-flex items-center space-x-1 text-xs text-ink-500 hover:text-ink-900 underline font-mono"
+                        >
+                          <Terminal className="w-3.5 h-3.5" />
+                          <span>{showRawText ? "Hide Raw Neural Text" : "Inspect Raw OCR Text Extraction"}</span>
+                          {showRawText ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        {showRawText && (
+                          <div className="mt-2 p-4 bg-surface-tint/80 text-ink-900 rounded-card text-left font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap border border-border shadow-soft">
+                            {rawOcrText}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* 8-Point Statutory Declarations Checklist */}
-                <div className="space-y-2.5">
-                  <div className="flex justify-between items-center px-1">
-                    <h3 className="text-xs font-semibold text-ink-500 font-mono uppercase tracking-wider flex items-center gap-1.5">
-                      <Scale className="w-3.5 h-3.5 text-tile-indigo-fg" />
-                      <span>Statutory Declarations Checklist (Rule 6)</span>
-                    </h3>
-                    <span className="text-[10px] bg-surface-tint text-ink-900 border border-border px-2 py-0.5 rounded-chip font-mono font-medium">
-                      8 Mandates Audited
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {scanResult.declarations &&
-                      Object.entries(scanResult.declarations).map(([key, decl]: [string, any]) => {
-                        const isOk = decl.status === "COMPLIANT";
-                        const isProviso = decl.status === "PROVISO_COMPLIANT";
-                        const IconComponent = getDeclarationIcon(key, decl.rule);
-
-                        return (
-                          <div
-                            key={key}
-                            className={`p-3.5 rounded-card border text-xs flex flex-col justify-between space-y-2 transition-all shadow-soft ${
-                              isOk
-                                ? "bg-surface-solid/90 border-border"
-                                : isProviso
-                                ? "bg-tile-indigo-bg/30 border-tile-indigo-fg/30"
-                                : "bg-tile-peach-bg/30 border-tile-peach-fg/30"
-                            }`}
-                          >
-                            <div className="flex justify-between items-start space-x-2">
-                              <div className="flex items-center space-x-1.5">
-                                <IconComponent className="w-3.5 h-3.5 text-ink-400" />
-                                <span className="font-mono text-[10px] bg-surface-tint text-ink-500 border border-border px-1.5 py-0.5 rounded-chip font-medium">
-                                  {decl.rule}
-                                </span>
-                              </div>
-
-                              <span
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 font-mono ${
-                                  isOk
-                                    ? "bg-tile-mint-bg text-tile-mint-fg border border-tile-mint-fg/30"
-                                    : isProviso
-                                    ? "bg-tile-indigo-bg text-tile-indigo-fg border border-tile-indigo-fg/30"
-                                    : "bg-tile-peach-bg text-tile-peach-fg border border-tile-peach-fg/30"
-                                }`}
-                              >
-                                {isOk ? (
-                                  <>
-                                    <CheckCircle2 className="w-3 h-3 text-tile-mint-fg" />
-                                    <span>Passed</span>
-                                  </>
-                                ) : isProviso ? (
-                                  <>
-                                    <Info className="w-3 h-3 text-tile-indigo-fg" />
-                                    <span>Proviso Ok</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="w-3 h-3 text-tile-peach-fg" />
-                                    <span>Missing</span>
-                                  </>
-                                )}
-                              </span>
-                            </div>
-
-                            <div>
-                              <p className="font-semibold text-ink-900 text-xs">{decl.name}</p>
-                              <p className="text-ink-500 font-mono text-xs mt-0.5">
-                                {decl.value || <span className="text-tile-peach-fg font-medium">Not declared / illegible</span>}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-
-                {/* Statutory Infraction Summary */}
-                {!scanResult.is_compliant && scanResult.violations && scanResult.violations.length > 0 && (
-                  <div className="p-4 rounded-card bg-tile-peach-bg/50 border border-tile-peach-fg/30 space-y-2 text-xs text-ink-900 shadow-soft font-mono">
-                    <div className="flex items-center space-x-1.5 text-tile-peach-fg font-semibold">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Statutory Offenses Under Section 36:</span>
-                    </div>
-                    <ul className="space-y-1 text-ink-500 pl-4 list-disc">
-                      {scanResult.violations.map((violation: string, idx: number) => (
-                        <li key={idx}>{violation}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Primary Action Buttons */}
-                <div className="space-y-2.5 pt-2">
-                  {!scanResult.is_compliant && scanId && !pdfUrl && (
-                    <button
-                      onClick={generateNotice}
-                      disabled={pdfGenerating}
-                      className="btn btn--primary w-full h-11 justify-center shadow-xs font-semibold text-xs flex items-center gap-1.5"
-                    >
-                      <FileText className="w-4 h-4 text-ink-900" />
-                      <span>{pdfGenerating ? "Compiling Notice PDF..." : "Generate Official Seizure Notice (PDF)"}</span>
-                      <ArrowRight className="w-4 h-4 text-ink-900" />
-                    </button>
-                  )}
-
-                  {pdfUrl && (
-                    <a
-                      href={pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn--primary w-full h-11 justify-center shadow-xs font-semibold text-xs flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4 text-ink-900" />
-                      <span>Download Generated Seizure Notice PDF</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-
+                {/* Persistent Bottom Action */}
+                <div className="pt-2 border-t border-border/80">
                   <button
                     onClick={resetScan}
-                    className="btn btn--ghost w-full h-10 justify-center border border-border/60 shadow-xs font-mono text-xs"
+                    className="btn btn--ghost w-full h-10 justify-center border border-border/70 shadow-xs font-mono text-xs hover:border-ink-900"
                   >
                     <RefreshCw className="w-4 h-4 text-ink-500" />
                     <span>Scan Another Commodity</span>
                   </button>
-
-                  {/* Raw OCR Inspection Drawer */}
-                  {rawOcrText && (
-                    <div className="pt-2 text-center">
-                      <button
-                        onClick={() => setShowRawText(!showRawText)}
-                        className="inline-flex items-center space-x-1 text-xs text-ink-500 hover:text-ink-900 underline font-mono"
-                      >
-                        <Terminal className="w-3.5 h-3.5" />
-                        <span>{showRawText ? "Hide Raw Neural Text" : "Inspect Raw OCR Text Extraction"}</span>
-                        {showRawText ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </button>
-
-                      {showRawText && (
-                        <div className="mt-2 p-4 bg-surface-tint/80 text-ink-900 rounded-card text-left font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap border border-border shadow-soft">
-                          {rawOcrText}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
