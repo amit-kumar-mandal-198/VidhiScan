@@ -873,6 +873,68 @@ export default function AdminPortal() {
         </div>
       </div>
 
+      {/* 3B. PREDICTIVE SUPPLY-CHAIN ANOMALY & WHOLESALE RAID TARGETING */}
+      <div className="rounded-card bg-surface-solid/95 border border-purple-300/80 p-5 md:p-6 shadow-soft space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-purple-800 uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Predictive Supply-Chain Intelligence (Spatial Graph Clustering)</span>
+            </div>
+            <h3 className="font-bold text-base text-ink-900 mt-0.5">
+              Wholesale Depot Root-Cause Raid Targeting
+            </h3>
+            <p className="text-xs text-ink-500">
+              Correlating multiple retail kirana scan complaints back to central Carrying & Forwarding (C&F) warehouse depots.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-1 rounded font-bold">
+            Zero-Harassment Protocol
+          </span>
+        </div>
+
+        {/* Spatial Supply Chain Cluster Tree */}
+        <div className="p-4 rounded-xl bg-purple-50/40 border border-purple-200 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <div className="lg:col-span-7 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+              <h4 className="font-bold text-xs text-purple-950">
+                Active Anomaly Cluster: Sector 18 & Atta Market Zone (Pin 201301)
+              </h4>
+            </div>
+            <p className="text-xs text-purple-900 leading-snug">
+              6 independent citizen scans flagged identical Section 36(2) barcode sticker overwrites on Surf Excel & Kalyan Spices across 4 small kirana stores.
+            </p>
+            <div className="p-2.5 rounded-lg bg-white border border-purple-200 text-[11px] font-mono space-y-1 text-purple-900">
+              <div className="font-bold text-ink-900">Upstream Supply-Chain Hub Identified:</div>
+              <div>🏢 Depot: <span className="font-semibold">Shree Ganesh C&F Logistics & Repacking Hub</span></div>
+              <div>📍 Address: <span className="font-semibold">Warehouse #14, Sector 9, Transport Nagar Depot</span></div>
+              <div className="flex items-center justify-between text-[10px] pt-1 border-t border-purple-100 text-purple-700">
+                <span>Correlation Confidence: 98.4%</span>
+                <span className="font-bold text-red-600">Batch Code: LOT-2026-DEL-88</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 flex flex-col justify-center space-y-2 text-center lg:border-l lg:border-purple-200 lg:pl-4">
+            <div className="text-[11px] text-purple-900 font-medium">
+              Target enforcement at source warehouse to protect 4 innocent neighborhood retailers:
+            </div>
+            <button
+              onClick={() => handleDispatchEnforcement(6, "RAID_ORDER")}
+              disabled={dispatchingActionId === 6}
+              className="py-2.5 px-4 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>{dispatchingActionId === 6 ? "Dispatching..." : "Target Section 15 Wholesale Raid"}</span>
+            </button>
+            <span className="text-[10px] text-ink-400 font-mono">
+              Generates court-admissible warrant for Central C&F Depot
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* 4. ENTERPRISE VIDHISCORE™ & PRIORITY RAID RADAR */}
       <div className="rounded-card bg-surface-solid/95 border border-red-200/80 p-5 md:p-6 shadow-soft space-y-4 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1006,6 +1068,34 @@ export default function AdminPortal() {
               <div><span className="text-ink-400">Target Enterprise:</span> <span className="font-semibold text-ink-900">{actionSuccessModal.company_name}</span></div>
               <div><span className="text-ink-400">Action Order Type:</span> <span className="font-bold text-red-600">{actionSuccessModal.action_type}</span></div>
               <div><span className="text-ink-400">Status:</span> <span className="font-semibold text-emerald-700">DISPATCHED TO FIELD UNITS</span></div>
+            </div>
+
+            {/* Zero-Corruption Cryptographic Seal */}
+            <div className="p-2.5 rounded-lg bg-slate-900 text-slate-300 font-mono text-[10px] space-y-1 text-left border border-slate-800">
+              <div className="flex items-center justify-between text-emerald-400 font-bold">
+                <span className="flex items-center gap-1">🔒 Anti-Bribery Cryptographic Vault:</span>
+                <span className="bg-emerald-950 text-emerald-300 px-1 py-0.2 rounded text-[9px]">IMMUTABLE LEDGER</span>
+              </div>
+              <div className="truncate text-slate-400">
+                SHA-256: 0x8f4b29a01c8e7741d5b309ea88192cb59...f91a2
+              </div>
+              <div className="text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800 text-[9px]">
+                <span>GPS Geotag: 28.5355° N, 77.3910° E</span>
+                <span className="text-emerald-400">Tamper-Proof Audit Lock: ACTIVE</span>
+              </div>
+            </div>
+
+            {/* Instant WhatsApp Statutory Summons Preview */}
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-left space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                <span className="flex items-center gap-1">
+                  <span>💬 WhatsApp Official Statutory Notice</span>
+                </span>
+                <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-mono font-bold">DELIVERED</span>
+              </div>
+              <p className="text-[11px] text-emerald-800 leading-snug">
+                Official summons served to Legal Metrology Director & Compliance Officer. Statutory 15-day rectification clock started.
+              </p>
             </div>
 
             <div className="pt-2 flex flex-col gap-2">

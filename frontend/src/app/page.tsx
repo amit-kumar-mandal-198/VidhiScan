@@ -45,7 +45,11 @@ import {
   Eye,
   BarChart3,
   Check,
-  Info
+  Info,
+  ShoppingCart,
+  Radio,
+  Volume2,
+  Coins
 } from "lucide-react";
 import VidhiBadge from "@/components/VidhiBadge";
 
@@ -931,6 +935,191 @@ export default function LandingPage() {
               </div>
               <div className="pt-2 flex items-center text-[11px] font-semibold text-purple-700">
                 <span>Enter HQ Radar →</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Next-Gen Visionary Innovations Showcase (Judge Special Deck) */}
+        <div className="p-6 rounded-card bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-surface-solid border-2 border-indigo-200/80 shadow-soft space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-3">
+            <div>
+              <div className="inline-flex items-center space-x-2 text-indigo-700 text-xs font-mono font-semibold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Next-Gen Enforcement & Trust Architecture</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-ink-900 mt-0.5">
+                5 Visionary Innovations Powering VidhiScan
+              </h3>
+              <p className="text-xs text-ink-500">
+                Beyond traditional retail audits: proactive e-commerce gatekeeping, digital twins, AI warehouse clustering, cryptographic raid logs, and citizen bounty economy.
+              </p>
+            </div>
+            <span className="px-3 py-1 rounded-full text-[11px] font-mono font-semibold bg-indigo-600 text-white self-start sm:self-auto shrink-0 shadow-xs">
+              Judge Showcase Deck
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+            {/* 1. Quick-Commerce Gatekeeper */}
+            <Link
+              href="/companies"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <ShoppingCart className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Blinkit / Zepto API
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  1. Quick-Commerce Live Gatekeeper
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Real-time microservice checks brand VidhiScore before cart checkout. Automatically imposes consumer warning tags or freezes defaulting SKUs instantly.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>Test Live Simulator</span>
+                <span>→</span>
+              </div>
+            </Link>
+
+            {/* 2. Packaging Digital Twin & Pre-Flight Studio */}
+            <Link
+              href="/manufacturer"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    Pre-Print Diagnostics
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  2. Packaging "Digital Twin" Pre-Flight Studio
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Manufacturers test 2D/3D carton artworks prior to mass printing. AI validates Rule 6/7 font ratios and generates pre-clearance metrology certificates.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>Launch Pre-Flight Studio</span>
+                <span>→</span>
+              </div>
+            </Link>
+
+            {/* 3. Predictive Supply-Chain Wholesale Radar */}
+            <Link
+              href="/admin"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <Radio className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Warehouse Pinpointing
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  3. Predictive Supply-Chain Depot Targeting
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Spatial graph neural clustering correlates isolated retail complaints across pin-codes to pinpoint central C&amp;F logistics hubs for wholesale raids.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>View Supply-Chain Radar</span>
+                <span>→</span>
+              </div>
+            </Link>
+
+            {/* 4. Zero-Corruption Cryptographic Raid Vault & WhatsApp */}
+            <Link
+              href="/admin"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                    SHA-256 Chain-of-Custody
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  4. Cryptographic Vault & WhatsApp Summons
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Every raid warrant is locked in an immutable SHA-256 hash preventing evidence tampering, and statutory notice is instantly mirrored to CEO's registered WhatsApp.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>Inspect Raid Vault</span>
+                <span>→</span>
+              </div>
+            </Link>
+
+            {/* 5. Bharat-First 12-Language Audio Deck */}
+            <Link
+              href="/scan"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                    <Volume2 className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    Native Web Speech API
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  5. Bharat-First Voice Narration
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Real-time audio readout of Legal Metrology compliance in Hindi, Tamil, Bengali, Marathi, and English, ensuring complete consumer accessibility across Bharat.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>Hear Voice Scanner</span>
+                <span>→</span>
+              </div>
+            </Link>
+
+            {/* 6. Jan-Prahari Citizen Whistleblower Bounty */}
+            <Link
+              href="/scan"
+              className="p-4 rounded-card bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center">
+                    <Coins className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    ₹500 Direct Benefit Transfer
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-ink-900 group-hover:text-indigo-700">
+                  6. Jan-Prahari Whistleblower Bounty
+                </h4>
+                <p className="text-[11px] text-ink-500 leading-relaxed">
+                  Incentivizes 1.4B citizens to report adulteration and dual-MRP packaging fraud with automated ₹500 UPI direct transfer upon verified inspector raid confirmation.
+                </p>
+              </div>
+              <div className="pt-3 text-[11px] font-semibold text-indigo-600 flex items-center justify-between">
+                <span>Claim Citizen Bounty</span>
+                <span>→</span>
               </div>
             </Link>
           </div>

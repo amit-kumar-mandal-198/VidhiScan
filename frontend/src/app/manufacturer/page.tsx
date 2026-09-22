@@ -25,7 +25,11 @@ import {
   HelpCircle,
   Send,
   Clock,
-  RefreshCw
+  RefreshCw,
+  UploadCloud,
+  Download,
+  Zap,
+  Eye
 } from "lucide-react";
 import VidhiBadge, { getBadgeConfig } from "@/components/VidhiBadge";
 
@@ -63,7 +67,12 @@ export default function ManufacturerPortal() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
   const [scoreHistory, setScoreHistory] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"catalog" | "history" | "badge">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "preflight" | "history" | "badge">("catalog");
+
+  // Pre-Flight Packaging Studio State
+  const [preflightSample, setPreflightSample] = useState<"ghee" | "noodles" | "tea">("ghee");
+  const [preflightAnalyzing, setPreflightAnalyzing] = useState(false);
+  const [preflightDone, setPreflightDone] = useState(true);
 
   // Registration modal state
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -396,6 +405,19 @@ export default function ManufacturerPortal() {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab("preflight")}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${
+                    activeTab === "preflight"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-ink-600 hover:text-ink-900"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Pre-Flight Studio</span>
+                  <span className="bg-amber-400 text-ink-900 text-[10px] px-1.5 py-0.2 rounded font-mono font-bold uppercase">AI Twin</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab("history")}
                   className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${
                     activeTab === "history"
@@ -479,6 +501,200 @@ export default function ManufacturerPortal() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* Tab 2: Packaging Pre-Flight AI Studio (Digital Twin) */}
+              {activeTab === "preflight" && (
+                <div className="bg-surface-solid border border-border rounded-xl p-5 shadow-xs space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 uppercase">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Packaging Digital Twin & Pre-Launch Simulator</span>
+                      </div>
+                      <h3 className="font-bold text-base text-ink-900 mt-0.5">
+                        Pre-Flight Metrology Verification Studio
+                      </h3>
+                      <p className="text-xs text-ink-500">
+                        Test packaging artwork vector files against Rule 6 & Rule 7 before mass printing millions of units.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-mono bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-md self-start sm:self-auto font-bold">
+                      Pre-Certification: +40 pts
+                    </span>
+                  </div>
+
+                  {/* Artwork Sample Selector */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-ink-700 block">
+                      Select Benchmark Packaging Vector / Artwork:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <button
+                        onClick={() => setPreflightSample("ghee")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          preflightSample === "ghee"
+                            ? "bg-emerald-50/80 border-emerald-500 ring-1 ring-emerald-400"
+                            : "bg-surface-base border-border hover:border-ink-400"
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🧈</div>
+                        <div className="font-bold text-xs text-ink-900">Pure Ghee 1L Tin</div>
+                        <div className="text-[10px] text-ink-500">Tinplate • Rule 6 & 7 Compliant</div>
+                      </button>
+
+                      <button
+                        onClick={() => setPreflightSample("noodles")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          preflightSample === "noodles"
+                            ? "bg-emerald-50/80 border-emerald-500 ring-1 ring-emerald-400"
+                            : "bg-surface-base border-border hover:border-ink-400"
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🍜</div>
+                        <div className="font-bold text-xs text-ink-900">Instant Noodles 70g</div>
+                        <div className="text-[10px] text-ink-500">Foil Pouch • Proviso Stamped</div>
+                      </button>
+
+                      <button
+                        onClick={() => setPreflightSample("tea")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          preflightSample === "tea"
+                            ? "bg-emerald-50/80 border-emerald-500 ring-1 ring-emerald-400"
+                            : "bg-surface-base border-border hover:border-ink-400"
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🍵</div>
+                        <div className="font-bold text-xs text-ink-900">Green Tea 250g Carton</div>
+                        <div className="text-[10px] text-ink-500">Duplex Board • Multi-Language</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Diagnostic Trigger Button */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-surface-base border border-border">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-ink-900">Simulate Rule 6 & 7 OpenCV Inspection</div>
+                      <div className="text-[11px] text-ink-500">Computes font height, bounding box ratios & anti-tampering defensibility.</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPreflightAnalyzing(true);
+                        setTimeout(() => {
+                          setPreflightAnalyzing(false);
+                          setPreflightDone(true);
+                        }, 500);
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                      {preflightAnalyzing ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Running diagnostics...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Run Diagnostics</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Preflight Diagnostics Results */}
+                  {preflightDone && (
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {/* Check 1: Font Height */}
+                        <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Rule 7 Font Height Ratio</span>
+                            </span>
+                            <span className="text-[10px] font-mono bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                              PASS (122%)
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 leading-snug">
+                            Surface area: 340 cm². Mandated minimum font height: 2.0 mm. Detected: 2.45 mm.
+                          </p>
+                        </div>
+
+                        {/* Check 2: Date Stamping Proviso */}
+                        <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Rule 6(1)(d) Date Stamping</span>
+                            </span>
+                            <span className="text-[10px] font-mono bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                              VALIDATED
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 leading-snug">
+                            Pre-packing date affixed to crown seal/neck area pursuant to statutory proviso clause.
+                          </p>
+                        </div>
+
+                        {/* Check 3: Unit Sale Price */}
+                        <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Unit Sale Price (USP) Metric</span>
+                            </span>
+                            <span className="text-[10px] font-mono bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                              COMPLIANT
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 leading-snug">
+                            Declared MRP inclusive of all taxes. Unit sale price (₹/ml or ₹/g) printed in bold.
+                          </p>
+                        </div>
+
+                        {/* Check 4: Anti-Tamper Hologram */}
+                        <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Anti-Tampering Defensibility</span>
+                            </span>
+                            <span className="text-[10px] font-mono bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                              95.8% SHIELD
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 leading-snug">
+                            Holographic laser border prevents fraudulent dual-MRP price sticker overwrites.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Official Pre-Launch Clearance Pass Banner */}
+                      <div className="p-4 rounded-xl bg-surface-base border border-emerald-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-bold text-ink-900 flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            <span>Pre-Launch Metrology Clearance Certificate Ready</span>
+                          </div>
+                          <div className="text-[11px] text-ink-500 font-mono">
+                            Ref: CERT-DCA-PRE-2026-88194 • Grants +40 pts VidhiScore™ upon first production batch.
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => alert("Pre-Launch Legal Metrology Clearance Certificate generated and downloaded!")}
+                            className="px-3 py-1.5 bg-ink-900 hover:bg-black text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download PDF Certificate</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

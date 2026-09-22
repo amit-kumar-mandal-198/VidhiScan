@@ -12,6 +12,7 @@ import {
   Sparkles,
   Building2,
   CheckCircle2,
+  XCircle,
   X,
   ExternalLink,
   Copy,
@@ -22,7 +23,10 @@ import {
   Layers,
   History,
   FileText,
-  BadgeAlert
+  BadgeAlert,
+  ShoppingCart,
+  Code,
+  Zap
 } from "lucide-react";
 import VidhiBadge, { getBadgeConfig } from "@/components/VidhiBadge";
 
@@ -64,6 +68,21 @@ export default function CompaniesDirectoryPage() {
   const [companyDossier, setCompanyDossier] = useState<any | null>(null);
   const [loadingDossier, setLoadingDossier] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+
+  // E-Commerce Gatekeeper Simulator State
+  const [activeView, setActiveView] = useState<"directory" | "ecom_simulator">("directory");
+  const [ecomBrand, setEcomBrand] = useState<"amul" | "hul" | "kalyan">("amul");
+  const [ecomData, setEcomData] = useState<any>(null);
+  const [loadingEcom, setLoadingEcom] = useState(false);
+
+  useEffect(() => {
+    setLoadingEcom(true);
+    fetch(`/api/companies/verify-ecom?brand=${ecomBrand}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setEcomData(data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingEcom(false));
+  }, [ecomBrand]);
 
   // Fetch Companies List
   const fetchCompanies = () => {
@@ -319,183 +338,423 @@ export default function CompaniesDirectoryPage() {
           </div>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="bg-surface-solid border border-border rounded-xl p-4 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-96">
-              <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search brand, company name, GSTIN..."
-                className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-surface-base text-xs text-ink-900 placeholder:text-ink-400 focus:outline-hidden focus:ring-1 focus:ring-ink-900"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-900"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Tier Filters */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-              {[
-                { id: "all", label: "All Tiers" },
-                { id: "diamond", label: "💎 Diamond", color: "text-emerald-700" },
-                { id: "gold", label: "🥇 Gold", color: "text-amber-700" },
-                { id: "silver", label: "🥈 Silver", color: "text-slate-700" },
-                { id: "bronze", label: "🥉 Bronze", color: "text-orange-700" },
-                { id: "defaulter", label: "🚨 Defaulters", color: "text-red-700" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedTier(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    selectedTier === tab.id
-                      ? "bg-ink-900 text-white shadow-2xs"
-                      : "bg-surface-base text-ink-600 hover:bg-surface-tint border border-border"
-                  }`}
-                >
-                  <span className={selectedTier !== tab.id ? tab.color : ""}>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* View Switcher: Directory vs Quick-Commerce Gatekeeper Simulator */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+          <button
+            onClick={() => setActiveView("directory")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "directory"
+                ? "bg-ink-900 text-white shadow-xs"
+                : "bg-surface-solid border border-border text-ink-600 hover:text-ink-900"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>1. National Brand Directory & Leaderboard</span>
+          </button>
+          <button
+            onClick={() => setActiveView("ecom_simulator")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "ecom_simulator"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-surface-solid border border-border text-ink-600 hover:text-ink-900"
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>2. Quick-Commerce Live Gatekeeper (Blinkit / Zepto / Amazon)</span>
+            <span className="bg-amber-400 text-ink-900 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase">Live API</span>
+          </button>
         </div>
 
-        {/* Brand Grid */}
-        {loading ? (
-          <div className="text-center py-20 bg-surface-solid border border-border rounded-xl">
-            <div className="w-8 h-8 border-2 border-ink-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs text-ink-500 font-mono">Querying Central Legal Metrology Trust Ledger...</p>
-          </div>
-        ) : filteredCompanies.length === 0 ? (
-          <div className="text-center py-20 bg-surface-solid border border-border rounded-xl">
-            <Building2 className="w-10 h-10 text-ink-300 mx-auto mb-2" />
-            <h3 className="font-bold text-sm text-ink-900">No brand matching your criteria</h3>
-            <p className="text-xs text-ink-500 mt-1">Try clearing your search query or selecting "All Tiers".</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCompanies.map((comp) => {
-              const cfg = getBadgeConfig(comp.current_vidhiscore, comp.tier?.badge_code, comp.tier?.tier_name);
-              const progressPct = Math.min(100, Math.max(5, (comp.current_vidhiscore / 1000) * 100));
+        {activeView === "directory" ? (
+          <>
+            {/* Filter and Search Bar */}
+            <div className="bg-surface-solid border border-border rounded-xl p-4 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                {/* Search Input */}
+                <div className="relative w-full sm:w-96">
+                  <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search brand, company name, GSTIN..."
+                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-surface-base text-xs text-ink-900 placeholder:text-ink-400 focus:outline-hidden focus:ring-1 focus:ring-ink-900"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-900"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-              return (
-                <div
-                  key={comp.id}
-                  className={`bg-surface-solid border rounded-xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between ${
-                    comp.is_blacklisted || comp.current_vidhiscore < 450
-                      ? "border-red-300 bg-red-50/30"
-                      : "border-border"
+                {/* Tier Filters */}
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                  {[
+                    { id: "all", label: "All Tiers" },
+                    { id: "diamond", label: "💎 Diamond", color: "text-emerald-700" },
+                    { id: "gold", label: "🥇 Gold", color: "text-amber-700" },
+                    { id: "silver", label: "🥈 Silver", color: "text-slate-700" },
+                    { id: "bronze", label: "🥉 Bronze", color: "text-orange-700" },
+                    { id: "defaulter", label: "🚨 Defaulters", color: "text-red-700" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSelectedTier(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                        selectedTier === tab.id
+                          ? "bg-ink-900 text-white shadow-2xs"
+                          : "bg-surface-base border border-border text-ink-600 hover:text-ink-900"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Brand Grid */}
+            {loading ? (
+              <div className="text-center py-20 bg-surface-solid border border-border rounded-xl">
+                <div className="w-8 h-8 border-2 border-ink-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs text-ink-500 font-mono">Querying Central Legal Metrology Trust Ledger...</p>
+              </div>
+            ) : filteredCompanies.length === 0 ? (
+              <div className="text-center py-20 bg-surface-solid border border-border rounded-xl">
+                <Building2 className="w-10 h-10 text-ink-300 mx-auto mb-2" />
+                <h3 className="font-bold text-sm text-ink-900">No brand matching your criteria</h3>
+                <p className="text-xs text-ink-500 mt-1">Try clearing your search query or selecting "All Tiers".</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCompanies.map((comp) => {
+                  const cfg = getBadgeConfig(comp.current_vidhiscore, comp.tier?.badge_code, comp.tier?.tier_name);
+                  const progressPct = Math.min(100, Math.max(5, (comp.current_vidhiscore / 1000) * 100));
+
+                  return (
+                    <div
+                      key={comp.id}
+                      className={`bg-surface-solid border rounded-xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between ${
+                        comp.is_blacklisted || comp.current_vidhiscore < 450
+                          ? "border-red-300 bg-red-50/30"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="space-y-4">
+                        {/* Card Top: Brand info + Badge */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="font-bold text-base text-ink-900 tracking-tight leading-snug">
+                                {comp.name}
+                              </h3>
+                            </div>
+                            <p className="text-xs text-ink-500 mt-0.5">{comp.category}</p>
+                            {comp.gstin && (
+                              <div className="text-[10px] font-mono text-ink-400 mt-1">
+                                GSTIN: {comp.gstin}
+                              </div>
+                            )}
+                          </div>
+
+                          <VidhiBadge
+                            score={comp.current_vidhiscore}
+                            badgeCode={comp.tier?.badge_code}
+                            tierName={comp.tier?.tier_name}
+                            size="sm"
+                            isBlacklisted={comp.is_blacklisted}
+                          />
+                        </div>
+
+                        {/* Score Bar & Numeric Metric */}
+                        <div className="space-y-1.5 bg-surface-base/80 p-3 rounded-lg border border-border/80">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-ink-500 font-medium">VidhiScore™ Index</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono font-bold text-sm text-ink-900">
+                                {comp.current_vidhiscore}
+                              </span>
+                              <span className="text-[10px] text-ink-400 font-mono">/ 1000</span>
+                            </div>
+                          </div>
+
+                          <div className="w-full h-2 rounded-full bg-border overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${progressPct}%`,
+                                backgroundColor: cfg.color
+                              }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-ink-500 pt-0.5 font-mono">
+                            <span>0 (Defaulter)</span>
+                            <span className="font-bold">{cfg.label}</span>
+                            <span>1000 (Ratna)</span>
+                          </div>
+                        </div>
+
+                        {/* Key Metrics Pill Grid */}
+                        <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                          <div className="p-2 rounded-md bg-surface-base border border-border">
+                            <div className="text-[10px] text-ink-400">Products</div>
+                            <div className="font-mono font-semibold text-ink-800">{comp.products_count} SKUs</div>
+                          </div>
+
+                          <div className="p-2 rounded-md bg-surface-base border border-border">
+                            <div className="text-[10px] text-ink-400">Audits</div>
+                            <div className="font-mono font-semibold text-ink-800">{comp.total_scans_count}</div>
+                          </div>
+
+                          <div className={`p-2 rounded-md border ${
+                            comp.active_violations_count > 0
+                              ? "bg-red-50 border-red-200 text-red-900"
+                              : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                          }`}>
+                            <div className="text-[10px] opacity-75">Violations</div>
+                            <div className="font-mono font-semibold">
+                              {comp.active_violations_count} active
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Bottom CTA */}
+                      <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                        <button
+                          onClick={() => openCompanyDossier(comp.id)}
+                          className="text-xs font-semibold text-ink-900 hover:text-black flex items-center gap-1.5 transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-ink-500" />
+                          <span>Inspect Dossier</span>
+                        </button>
+
+                        <button
+                          onClick={() => openCompanyDossier(comp.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-ink-900 text-white text-[11px] font-semibold hover:bg-black transition-all"
+                        >
+                          <span>Verification seal</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          /* QUICK-COMMERCE & E-COMMERCE GATEKEEPER SIMULATOR */
+          <div className="space-y-6">
+            {/* Explanatory Header */}
+            <div className="bg-surface-solid border border-border rounded-xl p-5 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                    <ShoppingCart className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-ink-900">
+                      Blinkit, Zepto & Amazon India Cart Eligibility Gatekeeper Protocol
+                    </h3>
+                    <p className="text-xs text-ink-500">
+                      Live integration preview: How quick-commerce carts query VidhiScore™ APIs in real time to authorize checkout or freeze sales.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-md uppercase self-start sm:self-auto">
+                  DCA Directive Rule 32
+                </span>
+              </div>
+
+              {/* Brand Selector Buttons */}
+              <div className="pt-3 border-t border-border flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-ink-500 mr-1">Select Benchmark SKU:</span>
+                <button
+                  onClick={() => setEcomBrand("amul")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    ecomBrand === "amul"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-surface-base border border-border text-ink-700 hover:text-ink-900"
                   }`}
                 >
-                  <div className="space-y-4">
-                    {/* Card Top: Brand info + Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-bold text-base text-ink-900 tracking-tight leading-snug">
-                            {comp.name}
-                          </h3>
-                        </div>
-                        <p className="text-xs text-ink-500 mt-0.5">{comp.category}</p>
-                        {comp.gstin && (
-                          <div className="text-[10px] font-mono text-ink-400 mt-1">
-                            GSTIN: {comp.gstin}
-                          </div>
-                        )}
-                      </div>
+                  <span>💎 Amul Butter 100g (940 Diamond)</span>
+                </button>
+                <button
+                  onClick={() => setEcomBrand("hul")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    ecomBrand === "hul"
+                      ? "bg-slate-700 text-white shadow-xs"
+                      : "bg-surface-base border border-border text-ink-700 hover:text-ink-900"
+                  }`}
+                >
+                  <span>🥈 Surf Excel 1kg (640 Silver)</span>
+                </button>
+                <button
+                  onClick={() => setEcomBrand("kalyan")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    ecomBrand === "kalyan"
+                      ? "bg-red-600 text-white shadow-xs"
+                      : "bg-surface-base border border-border text-ink-700 hover:text-ink-900"
+                  }`}
+                >
+                  <span>🚨 Kalyan Spices 200g (320 Defaulter)</span>
+                </button>
+              </div>
+            </div>
 
-                      <VidhiBadge
-                        score={comp.current_vidhiscore}
-                        badgeCode={comp.tier?.badge_code}
-                        tierName={comp.tier?.tier_name}
-                        size="sm"
-                        isBlacklisted={comp.is_blacklisted}
-                      />
+            {/* Live Interactive Split View */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Quick Commerce App Mockup */}
+              <div className="lg:col-span-6 space-y-3">
+                <div className="text-xs font-mono font-semibold uppercase text-ink-500 flex items-center justify-between">
+                  <span>📱 Customer Experience Preview (Blinkit / Zepto / Amazon)</span>
+                  <span className="text-emerald-700 font-bold">10-MIN QUICK COMMERCE</span>
+                </div>
+
+                <div className="bg-white border-2 border-slate-300 rounded-2xl p-5 shadow-lg space-y-4 relative overflow-hidden">
+                  <div className="flex items-center justify-between text-[11px] pb-3 border-b border-slate-100 text-slate-500">
+                    <span className="font-bold text-slate-800 flex items-center gap-1">
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Blinkit 10-Minute Cart</span>
+                    </span>
+                    <span>Delivery to: Sector 18, Noida</span>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-3xl shadow-2xs">
+                      {ecomBrand === "amul" ? "🧈" : ecomBrand === "hul" ? "🧼" : "🌶️"}
                     </div>
-
-                    {/* Score Bar & Numeric Metric */}
-                    <div className="space-y-1.5 bg-surface-base/80 p-3 rounded-lg border border-border/80">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-ink-500 font-medium">VidhiScore™ Index</span>
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono font-bold text-sm text-ink-900">
-                            {comp.current_vidhiscore}
-                          </span>
-                          <span className="text-[10px] text-ink-400 font-mono">/ 1000</span>
-                        </div>
-                      </div>
-
-                      <div className="w-full h-2 rounded-full bg-border overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${progressPct}%`,
-                            backgroundColor: cfg.color
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] text-ink-500 pt-0.5 font-mono">
-                        <span>0 (Defaulter)</span>
-                        <span className="font-bold">{cfg.label}</span>
-                        <span>1000 (Ratna)</span>
-                      </div>
-                    </div>
-
-                    {/* Key Metrics Pill Grid */}
-                    <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-                      <div className="p-2 rounded-md bg-surface-base border border-border">
-                        <div className="text-[10px] text-ink-400">Products</div>
-                        <div className="font-mono font-semibold text-ink-800">{comp.products_count} SKUs</div>
-                      </div>
-
-                      <div className="p-2 rounded-md bg-surface-base border border-border">
-                        <div className="text-[10px] text-ink-400">Audits</div>
-                        <div className="font-mono font-semibold text-ink-800">{comp.total_scans_count}</div>
-                      </div>
-
-                      <div className={`p-2 rounded-md border ${
-                        comp.active_violations_count > 0
-                          ? "bg-red-50 border-red-200 text-red-900"
-                          : "bg-emerald-50 border-emerald-200 text-emerald-900"
-                      }`}>
-                        <div className="text-[10px] opacity-75">Violations</div>
-                        <div className="font-mono font-semibold">
-                          {comp.active_violations_count} active
-                        </div>
-                      </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold">
+                        {ecomData?.category || "Packaged Commodity"}
+                      </span>
+                      <h3 className="font-bold text-base text-slate-900">
+                        {ecomBrand === "amul"
+                          ? "Amul Pasteurised Butter 100g"
+                          : ecomBrand === "hul"
+                          ? "Surf Excel Easy Wash Detergent 1kg"
+                          : "Kalyan Special Pure Spice Powder 200g"}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Brand: <span className="font-semibold text-slate-800">{ecomData?.brand}</span>
+                      </p>
                     </div>
                   </div>
 
-                  {/* Card Bottom CTA */}
-                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-                    <button
-                      onClick={() => openCompanyDossier(comp.id)}
-                      className="text-xs font-semibold text-ink-900 hover:text-black flex items-center gap-1.5 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-ink-500" />
-                      <span>Inspect Dossier</span>
-                    </button>
+                  {ecomData?.isDefaulter ? (
+                    <div className="p-3.5 rounded-xl bg-red-50 border-2 border-red-300 space-y-2">
+                      <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
+                        <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
+                        <span>REGULATORY CAUTION: SALES FROZEN BY DCA</span>
+                      </div>
+                      <p className="text-[11px] text-red-700 leading-snug">
+                        {ecomData?.ecomDisplay?.disclaimer}
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-red-200 text-red-800">
+                        <span>VidhiScore: 320 / 1000</span>
+                        <span className="font-bold">Sec 15 Raid Order Dispatched</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>VidhiScan Verified Metrology Standard</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">
+                          Score: {ecomData?.vidhiScore}/1000
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 leading-snug">
+                        {ecomData?.ecomDisplay?.disclaimer}
+                      </p>
+                      <div className="grid grid-cols-2 gap-1 text-[10px] font-mono pt-1 border-t border-emerald-200 text-emerald-900">
+                        <span>✓ Central MRP Capped</span>
+                        <span>✓ Standard Metric Net Qty</span>
+                      </div>
+                    </div>
+                  )}
 
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-slate-900 font-mono">
+                        {ecomBrand === "amul" ? "₹ 58.00" : ecomBrand === "hul" ? "₹ 469.00" : "₹ 140.00"}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {ecomBrand === "amul" ? "USP: ₹0.58/g" : ecomBrand === "hul" ? "USP: ₹0.469/g" : "Illegal sticker markup detected"}
+                      </div>
+                    </div>
+
+                    {ecomData?.cartCheckoutAllowed ? (
+                      <button className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>Add to Cart</span>
+                      </button>
+                    ) : (
+                      <button disabled className="px-4 py-2.5 rounded-xl bg-red-100 border border-red-300 text-red-700 text-xs font-bold cursor-not-allowed flex items-center gap-2">
+                        <XCircle className="w-4 h-4" />
+                        <span>Checkout Suspended</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live API Gateway Inspector */}
+              <div className="lg:col-span-6 space-y-3">
+                <div className="text-xs font-mono font-semibold uppercase text-ink-500 flex items-center justify-between">
+                  <span>⚡ Quick-Commerce Backend API Response</span>
+                  <span className="text-tile-indigo-fg font-bold">JSON PAYLOAD</span>
+                </div>
+
+                <div className="bg-slate-950 text-slate-200 rounded-2xl p-4 border border-slate-800 shadow-lg space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>GET /api/companies/verify-ecom?brand={ecomBrand}</span>
+                    </div>
+                    <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-400 text-[10px]">200 OK • 38ms</span>
+                  </div>
+
+                  <pre className="overflow-x-auto text-[11px] leading-relaxed max-h-[340px] text-slate-300">
+                    {loadingEcom ? (
+                      <span className="text-slate-500">Querying live Legal Metrology gateway...</span>
+                    ) : (
+                      JSON.stringify(ecomData, null, 2)
+                    )}
+                  </pre>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                    <span>Target Clients: Blinkit, Zepto, Swiggy Instamart, Amazon</span>
                     <button
-                      onClick={() => openCompanyDossier(comp.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-ink-900 text-white text-[11px] font-semibold hover:bg-black transition-all"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(ecomData, null, 2));
+                        alert("API payload copied to clipboard!");
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 underline font-mono"
                     >
-                      <span>Verification seal</span>
-                      <ExternalLink className="w-3 h-3" />
+                      Copy JSON Payload
                     </button>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="p-3.5 rounded-xl bg-surface-solid border border-border text-xs space-y-1 text-ink-500 leading-relaxed">
+                  <div className="font-bold text-ink-900 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Real-World Regulatory Impact</span>
+                  </div>
+                  <p className="text-[11px]">
+                    By mandating this API handshake during checkout, dark stores and quick-commerce warehouses can never sell non-compliant or illegally altered stock without triggering immediate algorithmic delisting.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
