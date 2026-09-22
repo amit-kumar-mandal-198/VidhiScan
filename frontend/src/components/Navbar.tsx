@@ -99,8 +99,8 @@ export default function Navbar() {
           
           {/* Brand Logo & Gov Subtitle */}
           <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-9 h-9 rounded-[10px] bg-ink-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
-              <VidhiScanLogo size={22} className="w-5.5 h-5.5" />
+            <div className="w-9 h-9 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <VidhiScanLogo size={36} className="w-9 h-9 rounded-full shadow-sm" />
             </div>
 
             <div>

@@ -1,20 +1,47 @@
 <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Rounded Ink Container -->
-  <rect width="100" height="100" rx="24" fill="#0B132B"/>
+  <!-- Outer Deep Ashoka Navy Medallion -->
+  <circle cx="50" cy="50" r="48" fill="#0B1B3D" stroke="#1E293B" stroke-width="2"/>
   
-  <!-- Left Solid Stem: Statutory Law Pillar -->
-  <path d="M 23 21 L 39 21 L 49 76 L 37 76 Z" fill="#F8FAFC"/>
+  <!-- Tricolor Ambient Rings (Gold / Saffron & Emerald) -->
+  <circle cx="50" cy="50" r="42" stroke="#F59E0B" stroke-width="2" stroke-dasharray="8 4"/>
+  <circle cx="50" cy="50" r="38" stroke="#10B981" stroke-width="1.5"/>
+
+  <!-- 24 Calibrated Sovereign Spokes -->
+  <g stroke="#38BDF8" stroke-width="2" opacity="0.5">
+    <line x1="50" y1="9" x2="50" y2="13"/>
+    <line x1="50" y1="87" x2="50" y2="91"/>
+    <line x1="9" y1="50" x2="13" y2="50"/>
+    <line x1="87" y1="50" x2="91" y2="50"/>
+    <line x1="21" y1="21" x2="24" y2="24"/>
+    <line x1="76" y1="76" x2="79" y2="79"/>
+    <line x1="21" y1="79" x2="24" y2="76"/>
+    <line x1="76" y1="24" x2="79" y2="21"/>
+  </g>
+
+  <!-- Central Golden Scale of Justice (Gold/Brass #F59E0B) -->
+  <!-- Pillar Base Pedestal -->
+  <path d="M 40 76 L 60 76 L 56 71 L 44 71 Z" fill="#F59E0B"/>
+  <rect x="47.5" y="27" width="5" height="44" fill="#F59E0B"/>
   
-  <!-- Right Scanning Array: Lower Translucent Beam -->
-  <path d="M 52 76 L 62 45 L 72 45 L 58 76 Z" fill="#10B981" fill-opacity="0.65"/>
-  
-  <!-- Right Scanning Array: Upper Emerald Beam -->
-  <path d="M 64 39 L 74 21 L 84 21 L 72 45 Z" fill="#10B981"/>
-  
-  <!-- Precision Sensor Alignment Dot -->
-  <circle cx="50" cy="76" r="3.5" fill="#10B981"/>
-  
-  <!-- Optical Reticle Crosshair Ticks -->
-  <path d="M 14 48 L 23 48" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
-  <path d="M 77 48 L 86 48" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+  <!-- Fulcrum Top Ring -->
+  <circle cx="50" cy="25" r="4.5" fill="#F59E0B"/>
+  <circle cx="50" cy="25" r="2.2" fill="#0B1B3D"/>
+
+  <!-- Horizontal Balance Beam -->
+  <rect x="23" y="31.5" width="54" height="4" rx="2" fill="#F8FAFC"/>
+
+  <!-- Left Gold Metric Pan -->
+  <line x1="27" y1="35.5" x2="21" y2="52" stroke="#F8FAFC" stroke-width="2"/>
+  <line x1="27" y1="35.5" x2="33" y2="52" stroke="#F8FAFC" stroke-width="2"/>
+  <path d="M 17 52 C 17 60, 37 60, 37 52 Z" fill="#F59E0B"/>
+
+  <!-- Right Gold Metric Pan -->
+  <line x1="73" y1="35.5" x2="67" y2="52" stroke="#F8FAFC" stroke-width="2"/>
+  <line x1="73" y1="35.5" x2="79" y2="52" stroke="#F8FAFC" stroke-width="2"/>
+  <path d="M 63 52 C 63 60, 83 60, 83 52 Z" fill="#F59E0B"/>
+
+  <!-- Optical Laser Scan Reticle Dot at Center -->
+  <circle cx="50" cy="44" r="3.5" fill="#10B981"/>
+  <line x1="41" y1="44" x2="45" y2="44" stroke="#10B981" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="44" x2="59" y2="44" stroke="#10B981" stroke-width="2" stroke-linecap="round"/>
 </svg>
