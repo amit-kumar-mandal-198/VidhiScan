@@ -1033,7 +1033,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
   }, [scanHistory]);
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6 px-4 py-4 md:py-6 pb-20">
+    <div className="w-full max-w-6xl mx-auto space-y-6 px-4 py-4 md:py-6 pb-20">
       
       {/* Hidden Canvas for Live Video Capture */}
       <canvas ref={canvasRef} className="hidden" />
@@ -1052,83 +1052,156 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
             Verify Packaging & Defeat Retail Price Fraud
           </h1>
 
-          <p className="text-xs md:text-sm text-ink-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs md:text-sm text-ink-500 max-w-2xl mx-auto leading-relaxed">
             Point your camera at any packaged commodity to instantly catch illegal sticker price markups, expired dates, and missing statutory declarations.
           </p>
 
           {/* Quick Stats Bar */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-ink-900">
-            <span className="bg-white/80 border border-border px-3 py-1 rounded-control shadow-xs">
-              🛡️ {citizenStats.total} Scans Conducted
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5 text-xs font-mono text-ink-900">
+            <span className="bg-white/80 border border-border px-3.5 py-1.5 rounded-control shadow-xs flex items-center gap-1.5">
+              🛡️ <strong className="font-semibold">{citizenStats.total}</strong> Scans Conducted
             </span>
-            <span className="bg-white/80 border border-border px-3 py-1 rounded-control shadow-xs text-tile-peach-fg font-semibold">
-              ⚠️ {citizenStats.violations} Overcharges Caught
+            <span className="bg-white/80 border border-border px-3.5 py-1.5 rounded-control shadow-xs text-tile-peach-fg font-semibold flex items-center gap-1.5">
+              ⚠️ <strong className="font-semibold">{citizenStats.violations}</strong> Overcharges Caught
             </span>
-            <button
-              onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
-              className="bg-ink-900 text-white px-3 py-1 rounded-control shadow-xs flex items-center gap-1 hover:opacity-90"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>My Scan History</span>
-            </button>
+            {citizenStats.overchargeSaved > 0 && (
+              <span className="bg-white/80 border border-border px-3.5 py-1.5 rounded-control shadow-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                💰 Saved <strong className="font-semibold">₹{formatCurrency(citizenStats.overchargeSaved)}</strong>
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 2. LOCAL CITIZEN SCAN HISTORY DRAWER */}
-      {showHistoryDrawer && (
-        <div className="p-4 rounded-canvas bg-surface-solid border border-border shadow-soft space-y-3 animate-in fade-in duration-200">
-          <div className="flex justify-between items-center border-b border-border pb-2">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-tile-indigo-fg" />
-              <h3 className="font-semibold text-xs font-mono text-ink-900 uppercase">My Verified Scans</h3>
-              <span className="text-[10px] font-mono text-ink-500">({scanHistory.length} saved locally)</span>
+      {/* 2-COLUMN DASHBOARD GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* LEFT COLUMN: Instant Test Presets, My Verified Scans History & Section 36 Protection */}
+        <div className="lg:col-span-4 space-y-5">
+
+          {/* Instant Demo Test Presets Card */}
+          <div className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-5 shadow-soft space-y-3">
+            <div className="flex items-center gap-2 border-b border-border pb-2.5">
+              <Sparkles className="w-4 h-4 text-tile-indigo-fg" />
+              <div>
+                <h3 className="font-semibold text-xs font-mono text-ink-900 uppercase">Instant Test Presets</h3>
+                <p className="text-[10px] text-ink-500 font-mono">Simulate dual-panel front + back scans</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="space-y-2">
               <button
-                onClick={clearHistory}
-                className="text-[10px] font-mono text-tile-peach-fg hover:underline flex items-center gap-1"
+                onClick={() => triggerSampleTest("butter")}
+                className="w-full p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all hover:scale-[1.01] group"
               >
-                <Trash2 className="w-3 h-3" />
-                <span>Clear</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-900 group-hover:text-tile-mint-fg transition-colors">Amul Butter 100g</span>
+                  <span className="text-[9px] bg-tile-mint-bg text-tile-mint-fg px-2 py-0.5 rounded-chip font-mono font-semibold">
+                    Pass
+                  </span>
+                </div>
+                <p className="text-[10px] text-ink-500 font-mono mt-0.5">100% Dual-Panel Compliant</p>
               </button>
-              <button onClick={() => setShowHistoryDrawer(false)} className="text-ink-400 hover:text-ink-900">
-                <ChevronUp className="w-4 h-4" />
+
+              <button
+                onClick={() => triggerSampleTest("surf")}
+                className="w-full p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all hover:scale-[1.01] group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-900 group-hover:text-tile-peach-fg transition-colors">Surf Excel 1kg</span>
+                  <span className="text-[9px] bg-tile-peach-bg text-tile-peach-fg px-2 py-0.5 rounded-chip font-mono font-semibold">
+                    Fraud
+                  </span>
+                </div>
+                <p className="text-[10px] text-tile-peach-fg font-mono mt-0.5">Section 36 Overcharge (+₹50)</p>
+              </button>
+
+              <button
+                onClick={() => triggerSampleTest("oil")}
+                className="w-full p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all hover:scale-[1.01] group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-900 group-hover:text-tile-indigo-fg transition-colors">Fortune Oil 1L</span>
+                  <span className="text-[9px] bg-tile-indigo-bg text-tile-indigo-fg px-2 py-0.5 rounded-chip font-mono font-semibold">
+                    Proviso
+                  </span>
+                </div>
+                <p className="text-[10px] text-ink-500 font-mono mt-0.5">Rule 6 Proviso (Crown/Seal)</p>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-            {scanHistory.map((item, idx) => (
-              <div
-                key={idx}
-                className="p-2.5 rounded-control bg-surface-tint/60 border border-border text-xs font-mono flex justify-between items-center"
-              >
+          {/* Local Citizen Verified Scans History Sidebar Panel */}
+          <div className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-5 shadow-soft space-y-3">
+            <div className="flex justify-between items-center border-b border-border pb-2.5">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-tile-indigo-fg" />
                 <div>
-                  <p className="font-semibold text-ink-900 truncate max-w-[180px]">{item.commodity}</p>
-                  <p className="text-[10px] text-ink-500">{item.timestamp}</p>
-                </div>
-                <div className="text-right">
-                  <span
-                    className={`text-[9px] px-1.5 py-0.5 rounded-chip font-semibold ${
-                      item.isCompliant
-                        ? "bg-tile-mint-bg text-tile-mint-fg"
-                        : "bg-tile-peach-bg text-tile-peach-fg"
-                    }`}
-                  >
-                    {item.isCompliant ? "Compliant" : "Violation"}
-                  </span>
-                  <p className="font-semibold text-ink-900 text-xs mt-0.5">₹ {formatCurrency(item.mrp)}</p>
-                  {item.netWeight && <p className="text-[10px] text-ink-500 font-mono">{item.netWeight}</p>}
+                  <h3 className="font-semibold text-xs font-mono text-ink-900 uppercase">My Verified Scans</h3>
+                  <span className="text-[10px] font-mono text-ink-500">({scanHistory.length} saved locally)</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              {scanHistory.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="text-[10px] font-mono text-tile-peach-fg hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
 
-      {/* 3. MAIN SCANNER CONTAINER */}
-      <div className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-5 md:p-8 shadow-soft relative space-y-5">
+            {scanHistory.length === 0 ? (
+              <div className="p-4 text-center text-xs font-mono text-ink-400 space-y-1">
+                <p>No scans conducted yet.</p>
+                <p className="text-[10px] text-ink-500 font-sans">Scan a packaged item or try a test preset!</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {scanHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-control bg-surface-tint/60 border border-border text-xs font-mono flex justify-between items-center hover:bg-surface-tint transition-colors"
+                  >
+                    <div>
+                      <p className="font-semibold text-ink-900 truncate max-w-[150px]">{item.commodity}</p>
+                      <p className="text-[10px] text-ink-500">{item.timestamp}</p>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded-chip font-semibold ${
+                          item.isCompliant
+                            ? "bg-tile-mint-bg text-tile-mint-fg"
+                            : "bg-tile-peach-bg text-tile-peach-fg"
+                        }`}
+                      >
+                        {item.isCompliant ? "Compliant" : "Violation"}
+                      </span>
+                      <p className="font-semibold text-ink-900 text-xs mt-0.5">₹ {formatCurrency(item.mrp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Legal Protection Card */}
+          <div className="rounded-canvas bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 shadow-soft space-y-2.5 text-xs font-mono">
+            <div className="flex items-center gap-2 text-amber-400 font-semibold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Section 36(2) Statutory Protection</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+              Selling packaged commodities above printed MRP is a punishable offence with fines up to ₹25,000 & imprisonment under Legal Metrology Act, 2009.
+            </p>
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: MAIN SCANNER CONTAINER */}
+        <div className="lg:col-span-8 space-y-5">
+          <div className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-5 md:p-8 shadow-soft relative space-y-5">
         
         {/* View 1: Camera Scanner & Mode Switcher (Active when not auditing) */}
         {!isAuditActive && (
@@ -1416,51 +1489,6 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
               </div>
             )}
 
-            {/* Quick Demo Test Presets */}
-            <div className="pt-2 border-t border-border/80">
-              <p className="text-[11px] font-mono uppercase tracking-wider text-ink-500 font-semibold mb-2.5 text-center">
-                Instant Forensic Test Samples (Simulates Dual-Panel Front + Back Capture)
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-md mx-auto">
-                <button
-                  onClick={() => triggerSampleTest("butter")}
-                  className="p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-ink-900">Amul Butter 100g</span>
-                    <span className="text-[9px] bg-tile-mint-bg text-tile-mint-fg px-1.5 py-0.5 rounded-chip font-mono font-semibold">
-                      Pass
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Dual-Panel Compliant</p>
-                </button>
-
-                <button
-                  onClick={() => triggerSampleTest("surf")}
-                  className="p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-ink-900">Surf Excel 1kg</span>
-                    <span className="text-[9px] bg-tile-peach-bg text-tile-peach-fg px-1.5 py-0.5 rounded-chip font-mono font-semibold">
-                      Fraud
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-tile-peach-fg font-mono mt-0.5">Dual-Panel Overcharge</p>
-                </button>
-
-                <button
-                  onClick={() => triggerSampleTest("oil")}
-                  className="p-3 rounded-panel bg-surface-solid hover:bg-surface-tint border border-border text-left shadow-xs transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-ink-900">Fortune Oil 1L</span>
-                    <span className="text-[9px] bg-tile-indigo-bg text-tile-indigo-fg px-1.5 py-0.5 rounded-chip font-mono font-semibold">
-                      Proviso
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Dual-Panel Proviso</p>
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -2217,6 +2245,8 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
             </div>
           </div>
         </div>
+      </div>
+    </div>
       )}
 
       {/* 5. JAN-PRAHARI CITIZEN BOUNTY & DBT COMMENDATION MODAL */}
