@@ -1488,8 +1488,6 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                 )}
               </div>
             )}
-
-            </div>
           </div>
         )}
 
@@ -1590,101 +1588,116 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
               <div className="space-y-4">
                 
                 {/* 1. Master Verdict Banner (Always Visible) */}
-                <div
-                  className={`p-5 md:p-6 rounded-card border text-center space-y-3 shadow-soft ${
-                    scanResult.is_compliant
-                      ? "bg-tile-mint-bg/40 border-tile-mint-fg/30 text-ink-900"
-                      : "bg-tile-peach-bg/40 border-tile-peach-fg/30 text-ink-900"
-                  }`}
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    {scanResult.is_compliant ? (
-                      <ShieldCheck className="w-6 h-6 text-tile-mint-fg" />
-                    ) : (
-                      <ShieldAlert className="w-6 h-6 text-tile-peach-fg" />
-                    )}
-                    <h2 className="text-lg md:text-xl font-semibold tracking-tight">
-                      {scanResult.is_compliant
-                        ? "Statutory Legal Metrology Compliant"
-                        : "Statutory Packaging Violation Flagged"}
-                    </h2>
-                  </div>
+                {(() => {
+                  const isStickerTampered = masterRegistry?.registry_status === "TAMPERED_PRICE_STICKER" || scanResult?.declarations?.rule_5_mrp?.status === "NON_COMPLIANT";
+                  const effectiveIsCompliant = Boolean(scanResult.is_compliant) && !isStickerTampered;
 
-                  <p className="text-xs text-ink-500 max-w-lg mx-auto leading-relaxed font-mono">
-                    {scanResult.is_compliant
-                      ? "All mandatory declarations conform strictly with Legal Metrology (Packaged Commodities) Rules, 2011."
-                      : "Illegal price overwrite or omitted statutory declarations detected under Rule 6 and Section 36."}
-                  </p>
-
-                  {/* Score Meter & Quick Price Pill */}
-                  <div className="pt-1 max-w-sm mx-auto space-y-2">
-                    <div className="flex justify-between text-xs font-mono font-medium">
-                      <span className="text-ink-500">Compliance score</span>
-                      <span className="font-semibold text-ink-900">
-                        {scanResult.compliance_score || 50}% ({scanResult.rules_passed || 4}/8 rules met)
-                      </span>
-                    </div>
-                    <div className="w-full bg-white/70 rounded-full h-2 overflow-hidden border border-border p-0.5">
+                  return (
+                    <>
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          (scanResult.compliance_score || 50) >= 75 ? "bg-lime-500" : "bg-tile-peach-fg"
+                        className={`p-5 md:p-6 rounded-card border text-center space-y-3 shadow-soft ${
+                          effectiveIsCompliant
+                            ? "bg-tile-mint-bg/40 border-tile-mint-fg/30 text-ink-900"
+                            : "bg-tile-peach-bg/40 border-tile-peach-fg/30 text-ink-900"
                         }`}
-                        style={{ width: `${scanResult.compliance_score || 50}%` }}
-                      />
-                    </div>
-
-                    {/* Fast Quick Status Strip */}
-                    <div className="flex items-center justify-center gap-2 pt-1">
-                      {masterRegistry && (
-                        <span className={`text-[11px] font-mono px-2.5 py-1 rounded-chip border font-semibold ${
-                          masterRegistry.is_overcharged
-                            ? "bg-red-100 text-red-800 border-red-300"
-                            : (!scanResult?.scanned_mrp ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300")
-                        }`}>
-                          {masterRegistry.is_overcharged
-                            ? `⚠️ Overcharged by ₹${formatCurrency(masterRegistry.price_discrepancy)}`
-                            : (!scanResult?.scanned_mrp
-                              ? `⚠️ MRP Unprinted / Blank on Package`
-                              : `✓ Clean MRP: ₹${formatCurrency(scanResult.scanned_mrp)}`)}
-                        </span>
-                      )}
-
-                      {/* Quick Voice Audio Trigger */}
-                      <button
-                        onClick={handlePlayVoiceSummary}
-                        className={`px-2.5 py-1 rounded-chip text-[11px] font-mono font-semibold transition-all flex items-center gap-1 border shadow-2xs ${
-                          isPlayingAudio
-                            ? "bg-red-600 text-white border-red-700 animate-pulse"
-                            : "bg-white text-ink-700 border-border hover:bg-surface-tint"
-                        }`}
-                        title="Voice Audio Summary"
                       >
-                        {isPlayingAudio ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-tile-indigo-fg" />}
-                        <span>{isPlayingAudio ? "Stop Audio" : "Play Voice Summary"}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                        <div className="flex items-center justify-center space-x-2">
+                          {effectiveIsCompliant ? (
+                            <ShieldCheck className="w-6 h-6 text-tile-mint-fg" />
+                          ) : (
+                            <ShieldAlert className="w-6 h-6 text-tile-peach-fg" />
+                          )}
+                          <h2 className="text-lg md:text-xl font-semibold tracking-tight">
+                            {effectiveIsCompliant
+                              ? "Statutory Legal Metrology Compliant"
+                              : isStickerTampered
+                              ? "Rule 6(2) Price Sticker Tampering Flagged"
+                              : "Statutory Packaging Violation Flagged"}
+                          </h2>
+                        </div>
 
-                {/* Jan-Prahari Citizen Whistleblower Bounty Card (if overcharged/violation) */}
-                {(!scanResult.is_compliant || masterRegistry?.is_overcharged) && (
-                  <div className="p-3.5 rounded-card border-2 border-amber-300 bg-amber-50/80 shadow-soft flex flex-col sm:flex-row items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2 text-left">
-                      <Gift className="w-4 h-4 text-amber-600 shrink-0" />
-                      <div className="text-xs">
-                        <span className="font-bold text-amber-950">Jan-Prahari Citizen Bounty Eligible: </span>
-                        <span className="text-amber-900">Confirmed packaging violation qualifies for ₹500 DBT reward.</span>
+                        <p className="text-xs text-ink-500 max-w-lg mx-auto leading-relaxed font-mono">
+                          {effectiveIsCompliant
+                            ? "All mandatory declarations conform strictly with Legal Metrology (Packaged Commodities) Rules, 2011."
+                            : isStickerTampered
+                            ? "Unlawful adhesive price sticker overwrite detected on packaging wrapper under Rule 6(2) & Section 36(2)."
+                            : "Illegal price overwrite or omitted statutory declarations detected under Rule 6 and Section 36."}
+                        </p>
+
+                        {/* Score Meter & Quick Price Pill */}
+                        <div className="pt-1 max-w-sm mx-auto space-y-2">
+                          <div className="flex justify-between text-xs font-mono font-medium">
+                            <span className="text-ink-500">Compliance score</span>
+                            <span className="font-semibold text-ink-900">
+                              {effectiveIsCompliant ? (scanResult.compliance_score || 88) : Math.min(scanResult.compliance_score || 50, 62)}% ({scanResult.rules_passed || 4}/8 rules met)
+                            </span>
+                          </div>
+                          <div className="w-full bg-white/70 rounded-full h-2 overflow-hidden border border-border p-0.5">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                effectiveIsCompliant ? "bg-lime-500" : "bg-tile-peach-fg"
+                              }`}
+                              style={{ width: `${effectiveIsCompliant ? (scanResult.compliance_score || 88) : Math.min(scanResult.compliance_score || 50, 62)}%` }}
+                            />
+                          </div>
+
+                          {/* Fast Quick Status Strip */}
+                          <div className="flex items-center justify-center gap-2 pt-1">
+                            {masterRegistry && (
+                              <span className={`text-[11px] font-mono px-2.5 py-1 rounded-chip border font-semibold ${
+                                isStickerTampered || masterRegistry.is_overcharged
+                                  ? "bg-red-100 text-red-800 border-red-300"
+                                  : (!scanResult?.scanned_mrp ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300")
+                              }`}>
+                                {isStickerTampered
+                                  ? `🚨 Illegal Sticker MRP Overwrite (Rule 6(2))`
+                                  : masterRegistry.is_overcharged
+                                  ? `⚠️ Overcharged by ₹${formatCurrency(masterRegistry.price_discrepancy)}`
+                                  : (!scanResult?.scanned_mrp
+                                    ? `⚠️ MRP Unprinted / Blank on Package`
+                                    : `✓ Clean MRP: ₹${formatCurrency(scanResult.scanned_mrp)}`)}
+                              </span>
+                            )}
+
+                            {/* Quick Voice Audio Trigger */}
+                            <button
+                              onClick={handlePlayVoiceSummary}
+                              className={`px-2.5 py-1 rounded-chip text-[11px] font-mono font-semibold transition-all flex items-center gap-1 border shadow-2xs ${
+                                isPlayingAudio
+                                  ? "bg-red-600 text-white border-red-700 animate-pulse"
+                                  : "bg-white text-ink-700 border-border hover:bg-surface-tint"
+                              }`}
+                              title="Voice Audio Summary"
+                            >
+                              {isPlayingAudio ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-tile-indigo-fg" />}
+                              <span>{isPlayingAudio ? "Stop Audio" : "Play Voice Summary"}</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => setShowBountyModal(true)}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-stretch sm:self-auto justify-center"
-                    >
-                      <Award className="w-3.5 h-3.5 text-amber-200" />
-                      <span>Claim ₹500 Bounty</span>
-                    </button>
-                  </div>
-                )}
+
+                      {/* Jan-Prahari Citizen Whistleblower Bounty Card (if overcharged/violation) */}
+                      {(!effectiveIsCompliant || masterRegistry?.is_overcharged || isStickerTampered) && (
+                        <div className="p-3.5 rounded-card border-2 border-amber-300 bg-amber-50/80 shadow-soft flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2 text-left">
+                            <Gift className="w-4 h-4 text-amber-600 shrink-0" />
+                            <div className="text-xs">
+                              <span className="font-bold text-amber-950">Jan-Prahari Citizen Bounty Eligible: </span>
+                              <span className="text-amber-900">Confirmed packaging violation qualifies for ₹500 DBT reward.</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setShowBountyModal(true)}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-stretch sm:self-auto justify-center"
+                          >
+                            <Award className="w-3.5 h-3.5 text-amber-200" />
+                            <span>Claim ₹500 Bounty</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* 2. Progressive Disclosure Tab Bar */}
                 <div className="flex items-center p-1 bg-surface-tint rounded-sidebar border border-border text-xs font-mono">
@@ -1733,7 +1746,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                     {masterRegistry && (
                       <div
                         className={`p-4 rounded-card border text-xs space-y-3 shadow-soft font-mono ${
-                          masterRegistry.is_overcharged
+                          masterRegistry.registry_status === "TAMPERED_PRICE_STICKER" || scanResult?.declarations?.rule_5_mrp?.status === "NON_COMPLIANT" || masterRegistry.is_overcharged
                             ? "bg-tile-peach-bg/30 border-tile-peach-fg/40 text-ink-900"
                             : (!scanResult.scanned_mrp
                               ? "bg-amber-50 border-amber-300 text-amber-950"
@@ -1742,7 +1755,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-semibold flex items-center space-x-1.5 text-xs">
-                            {masterRegistry.is_overcharged || !scanResult.scanned_mrp ? (
+                            {masterRegistry.registry_status === "TAMPERED_PRICE_STICKER" || scanResult?.declarations?.rule_5_mrp?.status === "NON_COMPLIANT" || masterRegistry.is_overcharged || !scanResult.scanned_mrp ? (
                               <AlertTriangle className="w-4 h-4 text-amber-600" />
                             ) : (
                               <Award className="w-4 h-4 text-tile-mint-fg" />
@@ -1770,7 +1783,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                           <div className="p-2.5 bg-white/80 rounded-control border border-border">
                             <span className="text-ink-500 text-[10px] block">Packaging Scanned MRP:</span>
                             {scanResult.scanned_mrp && scanResult.scanned_mrp > 0 ? (
-                              <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
+                              <span className={`font-semibold text-sm ${masterRegistry.registry_status === "TAMPERED_PRICE_STICKER" || scanResult?.declarations?.rule_5_mrp?.status === "NON_COMPLIANT" || masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
                                 ₹ {formatCurrency(scanResult.scanned_mrp)}
                               </span>
                             ) : (
@@ -1782,7 +1795,30 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                         </div>
 
                         {/* Overcharge Details & Redressal Trigger */}
-                        {masterRegistry.is_overcharged ? (
+                        {masterRegistry.registry_status === "TAMPERED_PRICE_STICKER" || scanResult?.declarations?.rule_5_mrp?.status === "NON_COMPLIANT" ? (
+                          <div className="p-3 rounded-control bg-tile-peach-bg/80 border border-tile-peach-fg/30 space-y-2.5">
+                            <div className="flex justify-between items-center">
+                              <p className="text-tile-peach-fg font-bold text-xs flex items-center gap-1">
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Rule 6(2) & Section 36(2) Illegal Sticker Overwrite Offence</span>
+                              </p>
+                              <span className="text-tile-peach-fg font-bold">
+                                Illegal Sticker Tag
+                              </span>
+                            </div>
+                            <p className="text-ink-500 text-[11px] leading-relaxed font-sans">
+                              {masterRegistry.verdict_note || "An adhesive price sticker was detected pasted over the packaging wrapper. Under Rule 6(2) and Section 36(2) of the Legal Metrology Act, 2009, sticking price tags over original printed MRP is a punishable statutory offence."}
+                            </p>
+
+                            <button
+                              onClick={() => setResultTab("legal")}
+                              className="btn btn--primary w-full h-9 justify-center text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-ink-900" />
+                              <span>View Statutory Inspection Report & Legal Notice</span>
+                            </button>
+                          </div>
+                        ) : masterRegistry.is_overcharged ? (
                           <div className="p-3 rounded-control bg-tile-peach-bg/80 border border-tile-peach-fg/30 space-y-2.5">
                             <div className="flex justify-between items-center">
                               <p className="text-tile-peach-fg font-bold text-xs flex items-center gap-1">
@@ -2137,6 +2173,8 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                         </button>
                       )}
                     </div>
+                  </div>
+                )}
 
                     {/* Raw OCR Inspection Drawer */}
                     {rawOcrText && (
@@ -2184,7 +2222,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* 4. NATIONAL CONSUMER HELPLINE COMPLAINT DRAFT MODAL */}
@@ -2245,8 +2283,6 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
             </div>
           </div>
         </div>
-      </div>
-    </div>
       )}
 
       {/* 5. JAN-PRAHARI CITIZEN BOUNTY & DBT COMMENDATION MODAL */}

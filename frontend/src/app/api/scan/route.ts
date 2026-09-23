@@ -311,14 +311,7 @@ export async function POST(request: NextRequest) {
     }
     const imageHash = hasher.digest("hex");
 
-    // In-memory route cache check
-    if (!(globalThis as any)._NEXT_SCAN_CACHE) {
-      (globalThis as any)._NEXT_SCAN_CACHE = new Map();
-    }
-    if ((globalThis as any)._NEXT_SCAN_CACHE.has(imageHash)) {
-      return NextResponse.json((globalThis as any)._NEXT_SCAN_CACHE.get(imageHash));
-    }
-
+    // Direct Multimodal Gemini Vision Inference across all uploaded angles/faces
     const imageParts = imageBuffers.map((buf, idx) => ({
       inline_data: {
         mime_type: files[idx].type || "image/jpeg",
@@ -333,13 +326,12 @@ Synthesize and cross-reference information from ALL provided photos into a unifi
 - The Front panel typically declares the Brand name, Commodity denomination, and Net Quantity.
 - The Back or Side panels typically declare the Maximum Retail Price (MRP), Manufacturing / Packing Date, Expiry / Best Before date, Manufacturer / Packer registered name & address, Consumer Care redressal cell (email, phone), Country of Origin, and Barcode.
 
-CRITICAL FOR MRP & STICKER TAMPERING FORENSICS:
-1. Check if the MRP box / stamp has a printed price number across ANY of the packaging faces. If the MRP field or designated box is blank, unprinted, or smeared, set "scanned_mrp": null and add "Unprinted MRP in designated statutory box" to violations. If a numerical price is printed, return it as a number (e.g. 58.0 or 150.0 or 50.0).
-2. STICKER PRICE OVERWRITE DETECTION (Rule 6(2) & Section 36(2) Offence):
-   Inspect the packaging photo meticulously for any adhesive paper stickers, sticky labels, price tags, barcode sticker tags, or paper tapes pasted ON TOP OF or OVER the packaging wrapper (e.g., a green, white, or colored adhesive paper sticker with handwritten or printed price like 'MRP 50' pasted on the package).
-   If an adhesive sticker or label with a price is detected over the packaging:
-   - Set "is_sticker_mrp": true
-   - Set "sticker_details": "Adhesive paper sticker pasted over original packaging showing MRP ₹<price>"
+CRITICAL FOR ADHESIVE STICKER PRICE TAMPERING FORENSICS (Rule 6(2) & Section 36(2) OF LEGAL METROLOGY ACT, 2009):
+1. Examine the packaging photo meticulously for ANY adhesive paper sticker, green/white/yellow paper tag, barcode label tag, or adhesive tape pasted ON TOP OF or OVER the packaging wrapper (e.g., a green, white, or colored paper tag with handwritten or printed price like '50 MRP' or 'MRP 50' pasted on the package).
+2. Under Legal Metrology (Packaged Commodities) Rules Rule 6(2) and Section 36(2) of the Legal Metrology Act, 2009, sticking adhesive price tags or paper labels over original printed packaging wrappers is an EXPLICIT ILLEGAL STATUTORY OFFENCE.
+3. If ANY adhesive sticker, price tag, or pasted paper label with a price is detected on top of the packaging wrapper:
+   - YOU MUST SET "is_sticker_mrp": true
+   - SET "sticker_details": "Adhesive paper tag/sticker pasted over packaging wrapper showing MRP ₹<price>"
    - Extract the sticker price into "scanned_mrp": float (e.g. 50.0)
 
 Return ONLY valid JSON with this schema:
@@ -348,7 +340,7 @@ Return ONLY valid JSON with this schema:
   "commodity": "string or null (e.g. 'Britannia Bourbon Creme Biscuits', 'Butter')",
   "net_quantity": "string or null (e.g. '5 x 100 g = 500 g' or '1 kg')",
   "scanned_mrp": float or null,
-  "is_sticker_mrp": boolean (true if MRP is on a pasted adhesive paper sticker or sticky label),
+  "is_sticker_mrp": boolean (true if MRP is on a pasted adhesive paper sticker or sticky label tag),
   "sticker_details": "string or null (description of pasted price sticker if detected)",
   "mfg_date": "string or null (e.g. '02/2026' or null if unprinted/blank)",
   "exp_date": "string or null (e.g. 'Best Before 9 Months' or null if unprinted/blank)",
@@ -499,7 +491,12 @@ Return ONLY valid JSON with this schema:
 
     let consumerCareValue = aiData.consumer_care || (hasCareInText ? "Consumer Care Support Available" : null);
 
-    const isStickerMrp = Boolean(aiData.is_sticker_mrp) || Boolean(aiData.sticker_details);
+    const isStickerMrp =
+      Boolean(aiData.is_sticker_mrp) ||
+      Boolean(aiData.sticker_details) ||
+      /\b(sticker|pasted|adhesive|tape|paper tag|green sticker|white sticker|handwritten mrp)\b/i.test(
+        (aiData.raw_text || "") + " " + (aiData.sticker_details || "") + " " + (Array.isArray(aiData.violations) ? aiData.violations.join(" ") : "")
+      );
 
     const declarations: Record<string, any> = {
       rule_1_mfg_name: {
