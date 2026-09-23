@@ -216,7 +216,34 @@ async def upload_and_scan(
     db.commit()
     db.refresh(db_scan)
 
-    # 8. Dynamic VidhiScore & Badge Impact
+    # 8. Auto-generate PDF report with evidence photo for every scan
+    scan_pdf_data = {
+        "scan_id": db_scan.id,
+        "is_compliant": bool(verdict.get("is_compliant", False)),
+        "commodity": verdict.get("commodity") or "Packaged Retail Commodity",
+        "fraud_type": fraud_type,
+        "violations": verdict.get("violations", []),
+        "compliance_score": verdict.get("compliance_score", 100),
+        "rules_passed": verdict.get("rules_passed", 8),
+        "scanned_mrp": clean_mrp,
+        "scanned_mfg_date": str(verdict.get("mfg_date") or ""),
+        "scanned_exp_date": str(verdict.get("exp_date") or ""),
+        "scanned_net_weight": str(verdict.get("net_weight") or ""),
+        "manufacturer": str(verdict.get("manufacturer") or ""),
+        "inspected_by": safe_inspected_by,
+        "location_name": safe_loc or "Maharashtra Metro Zone",
+        "declarations": verdict.get("declarations"),
+        "image_path": db_scan.image_path
+    }
+    try:
+        pdf_url = generate_legal_notice(scan_pdf_data, inspector_id=safe_inspected_by)
+        db_scan.notice_url = pdf_url
+        db.commit()
+        db.refresh(db_scan)
+    except Exception as pdf_err:
+        pdf_url = None
+
+    # 9. Dynamic VidhiScore & Badge Impact
     company_score_impact = None
     if matched_company:
         company_score_impact = evaluate_scan_impact(
@@ -245,28 +272,30 @@ async def upload_and_scan(
     return {
         "scan_id": db_scan.id,
         "image_url": db_scan.image_path,
+        "pdf_url": db_scan.notice_url,
         "ai_analysis": ai_result
     }
 
 @router.post("/{scan_id}/generate-notice")
 async def create_notice(scan_id: int, db: Session = Depends(get_db)):
     """
-    Generates a PDF legal notice for a specific scan.
+    Generates a PDF legal notice / inspection report for a specific scan.
     """
     scan_report = db.query(ScanReport).filter(ScanReport.id == scan_id).first()
     if not scan_report:
         raise HTTPException(status_code=404, detail="Scan not found")
         
-    if scan_report.is_compliant:
-        raise HTTPException(status_code=400, detail="Cannot generate notice for a compliant product.")
-        
     scan_data = {
         "scan_id": scan_report.id,
+        "is_compliant": scan_report.is_compliant,
         "fraud_type": scan_report.fraud_type,
         "scanned_mrp": scan_report.scanned_mrp,
         "scanned_mfg_date": scan_report.scanned_mfg_date,
         "scanned_exp_date": scan_report.scanned_exp_date,
-        "scanned_net_weight": scan_report.scanned_net_weight
+        "scanned_net_weight": scan_report.scanned_net_weight,
+        "inspected_by": scan_report.inspected_by or "Public",
+        "location_name": scan_report.location_name or "Maharashtra Metro Zone",
+        "image_path": scan_report.image_path
     }
     
     pdf_url = generate_legal_notice(scan_data)

@@ -521,55 +521,8 @@ export default function PublicPortal() {
         setErrorMsg("AI could not read label. Please ensure package is well-lit and in focus.");
       }
     } catch (err: any) {
-      console.warn("Scan processing network fallback:", err);
-      // Fallback: render verified legal audit report so the user is never stuck with an empty screen
-      const fallbackVerdict = {
-        compliance_score: 88,
-        rules_passed: 7,
-        total_rules: 8,
-        is_compliant: true,
-        commodity: "Packaged Retail Commodity (Rule 6 Verified)",
-        scanned_mrp: 58.0,
-        net_weight: "100 g",
-        mfg_date: "02/2026",
-        exp_date: "Best Before 9 Months",
-        consumer_care: true,
-        manufacturer: "Registered Domestic Packer under Rule 6",
-        barcode: "8901262150114",
-        declarations: {
-          rule_1_mfg_name: { name: "Name & Address of Manufacturer / Packer", rule: "Rule 6(1)(a)", status: "COMPLIANT", value: "Registered Domestic FMCG Packer, Unit 4, GIDC Estate, Gujarat - 388001", details: "Mandatory name, address and premise of manufacturer/packer." },
-          rule_2_net_qty: { name: "Net Quantity (Weight / Volume / Count)", rule: "Rule 6(1)(b)", status: "COMPLIANT", value: "100 g", details: "Declared in standard SI metric units (g, kg, ml, l)." },
-          rule_3_generic_name: { name: "Generic / Common Name of Commodity", rule: "Rule 6(1)(c)", status: "COMPLIANT", value: "Packaged Food Commodity", details: "Clear generic identity and commodity denomination." },
-          rule_4_mfg_date: { name: "Month & Year of Manufacture / Packing", rule: "Rule 6(1)(d)", status: "COMPLIANT", value: "02/2026", details: "Month and year of packaging or import." },
-          rule_5_mrp: { name: "Maximum Retail Price (MRP incl. of all taxes)", rule: "Rule 6(1)(e)", status: "COMPLIANT", value: "₹ 58.00 (USP ₹0.58/g)", details: "Retail price inclusive of all taxes clearly printed." },
-          rule_6_expiry: { name: "Best Before / Expiry / Use By Date", rule: "Rule 6(1)(g)", status: "COMPLIANT", value: "Best Before 9 Months from Manufacture", details: "Mandatory duration or date for perishables and food." },
-          rule_7_consumer_care: { name: "Consumer Care Details (Phone / Email / Address)", rule: "Rule 6(1)(h)", status: "COMPLIANT", value: "Toll Free: 1800-258-3333 | grievance@compliance.gov.in", details: "Designated officer phone, email or postal helpline." },
-          rule_8_country_origin: { name: "Country of Origin", rule: "Rule 6(1)(n)", status: "COMPLIANT", value: "India (Domestic)", details: "Clear unambiguous origin declaration." }
-        },
-        violations: []
-      };
-      setScanResult(fallbackVerdict);
-      setMasterRegistry({
-        registry_status: "MATCHED_MASTER_REGISTRY",
-        registered_brand: "Amul / GCMMF",
-        registered_product: "Pasteurised Butter 100g",
-        official_mrp: 58.0,
-        official_net_weight: "100g",
-        is_overcharged: false,
-        price_discrepancy: 0.0,
-        section_36_violation: false
-      });
-      setCompanyProfile({
-        company_id: 1,
-        company_name: "Amul / GCMMF",
-        brand_slug: "amul",
-        current_vidhiscore: 940,
-        tier_name: "Vidhi Ratna (Diamond)",
-        badge_code: "diamond",
-        badge_color: "#10B981"
-      });
-      setScanId(1085);
-      setErrorMsg(null);
+      console.warn("Scan processing error:", err);
+      setErrorMsg(err?.message || "AI packaging scan failed. Please ensure the label photo is clear and retry.");
     } finally {
       setIsUploading(false);
     }

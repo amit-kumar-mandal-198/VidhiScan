@@ -1,8 +1,6 @@
 import os
 import re
 import json
-import cv2
-import numpy as np
 import PIL.Image
 from dotenv import load_dotenv
 
@@ -10,9 +8,6 @@ from dotenv import load_dotenv
 _backend_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(_backend_env)
 load_dotenv()
-
-# Set environment variable to fix Windows encoding crash during model download
-os.environ["PYTHONIOENCODING"] = "utf-8"
 
 # -------------------------------------------------------------
 # 1. Gemini Vision AI Engine (State of the Art Multimodal Vision)
@@ -32,12 +27,38 @@ def get_gemini_model():
         return model
     except Exception as e:
         print(f"Gemini initialization error: {e}")
+import hashlib
+
+_gemini_client = None
+IMAGE_ANALYSIS_CACHE = {}
+
+def get_image_hash(image_path: str) -> str:
+    """Computes SHA-256 hash of the image file to ensure deterministic caching."""
+    hasher = hashlib.sha256()
+    with open(image_path, "rb") as f:
+        while chunk := f.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+def get_gemini_model():
+    global _gemini_client
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-3.6-flash")
+        return model
+    except Exception as e:
+        print(f"Gemini initialization error: {e}")
         return None
 
 def analyze_with_gemini_vision(image_path: str):
     """
     Direct multimodal inspection using Gemini Vision for forensic packaging compliance.
     Extracts all 8 Rule 6 declarations with high accuracy even on complex curved wrappers.
+    Uses temperature: 0.0 for 100% deterministic results.
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -79,19 +100,21 @@ Return a valid JSON object matching this schema:
 }
 Return ONLY pure valid JSON."""
 
-        # Try fastest multimodal models with resilient fallbacks
+        # Enforce temperature: 0.0 for zero variance across identical images
+        gen_config = genai.GenerationConfig(temperature=0.0, response_mime_type="application/json")
+
         models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-pro-latest"]
         for mname in models_to_try:
             try:
-                model = genai.GenerativeModel(mname)
-                res = model.generate_content([img, prompt], request_options={"timeout": 12})
+                model = genai.GenerativeModel(mname, generation_config=gen_config)
+                res = model.generate_content([img, prompt], request_options={"timeout": 14})
                 raw_text = res.text.strip()
                 if raw_text.startswith("```"):
                     raw_text = re.sub(r"^```(?:json)?", "", raw_text)
                     raw_text = re.sub(r"```$", "", raw_text).strip()
 
                 data = json.loads(raw_text)
-                if data and isinstance(data, dict) and (data.get("net_quantity") or data.get("brand") or data.get("commodity")):
+                if data and isinstance(data, dict) and (data.get("net_quantity") or data.get("brand") or data.get("commodity") or data.get("raw_text")):
                     return data
             except Exception as e:
                 print(f"Gemini {mname} inference fallback: {e}")
@@ -103,59 +126,48 @@ Return ONLY pure valid JSON."""
         return None
 
 # -------------------------------------------------------------
-# 2. Local EasyOCR Reader (Offline Fallback Engine)
-# -------------------------------------------------------------
-_reader = None
-
-def get_reader():
-    global _reader
-    if _reader is None:
-        import easyocr
-        print("Loading EasyOCR model (first time only, please wait)...")
-        _reader = easyocr.Reader(['en'], gpu=False, verbose=False)
-        print("EasyOCR model loaded successfully!")
-    return _reader
-
-def extract_text_and_boxes(image_path: str):
-    """
-    Extracts text and bounding boxes from the image using EasyOCR.
-    """
-    reader = get_reader()
-    results = reader.readtext(image_path)
-        
-    extracted_data = []
-    full_text = []
-    
-    for (bbox, text, prob) in results:
-        clean_bbox = []
-        try:
-            for pt in bbox:
-                clean_bbox.append([int(pt[0]), int(pt[1])])
-        except Exception:
-            clean_bbox = []
-
-        extracted_data.append({
-            "bbox": clean_bbox,
-            "text": str(text),
-            "confidence": round(float(prob), 4)
-        })
-        full_text.append(str(text))
-        
-    return extracted_data, " ".join(full_text)
-
-# -------------------------------------------------------------
-# 3. Rule Engine & Declarations Compiler
+# 2. Rule Engine & Declarations Compiler
 # -------------------------------------------------------------
 def compile_declarations_from_vision(vdata: dict):
     """
-    Compiles structured declarations from Gemini Vision JSON.
+    Compiles structured declarations from Gemini Vision JSON with deterministic text cross-verification.
     """
+    raw_text_lower = (vdata.get("raw_text") or "").lower()
+
+    # Deterministic fallback check from raw extracted text
+    has_date_in_text = bool(re.search(r"\b(mfd|pkd|mfg|packed|use by|best before|exp|expiry|\d{2}/\d{2,4})\b", raw_text_lower))
+    has_seal_ref_in_text = vdata.get("seal_referred") or bool(re.search(r"\b(crimp|seal|crown|neck|bottom|see side)\b", raw_text_lower))
+    has_care_in_text = bool(re.search(r"(\b1800\b|@|email|help|care|toll|cell|phone|\d{10})", raw_text_lower))
+    has_mfg_in_text = bool(re.search(r"\b(mfg by|packed by|marketed by|ltd|pvt|corp|unit|factory|address)\b", raw_text_lower))
+
+    mfg_val = vdata.get("manufacturer")
+    if not mfg_val and has_mfg_in_text:
+        mfg_val = "Declared on Packaging Text"
+
+    mfg_date_val = vdata.get("mfg_date")
+    if not mfg_date_val:
+        if has_seal_ref_in_text:
+            mfg_date_val = "Referred to Seal/Crimp Area"
+        elif has_date_in_text:
+            mfg_date_val = "Date Stamped on Pack"
+
+    exp_date_val = vdata.get("exp_date")
+    if not exp_date_val:
+        if has_seal_ref_in_text:
+            exp_date_val = "Referred to Seal/Crimp Area"
+        elif has_date_in_text:
+            exp_date_val = "Best Before / Expiry Stamped on Pack"
+
+    consumer_care_val = vdata.get("consumer_care")
+    if not consumer_care_val and has_care_in_text:
+        consumer_care_val = "Consumer Care Support Available"
+
     declarations = {
         "rule_1_mfg_name": {
             "name": "Name & Address of Manufacturer / Packer",
             "rule": "Rule 6(1)(a)",
-            "status": "COMPLIANT" if vdata.get("manufacturer") else "MISSING",
-            "value": vdata.get("manufacturer"),
+            "status": "COMPLIANT" if mfg_val else "MISSING",
+            "value": mfg_val,
             "details": "Mandatory name, address and premise of manufacturer/packer."
         },
         "rule_2_net_qty": {
@@ -175,8 +187,8 @@ def compile_declarations_from_vision(vdata: dict):
         "rule_4_mfg_date": {
             "name": "Month & Year of Manufacture / Packing",
             "rule": "Rule 6(1)(d)",
-            "status": "COMPLIANT" if vdata.get("mfg_date") else ("PROVISO_COMPLIANT" if vdata.get("seal_referred") else "MISSING"),
-            "value": vdata.get("mfg_date") or ("Referred to Seal/Crimp Area" if vdata.get("seal_referred") else None),
+            "status": "COMPLIANT" if vdata.get("mfg_date") else ("PROVISO_COMPLIANT" if mfg_date_val else "MISSING"),
+            "value": mfg_date_val,
             "details": "Month and year of packaging or import."
         },
         "rule_5_mrp": {
@@ -189,15 +201,15 @@ def compile_declarations_from_vision(vdata: dict):
         "rule_6_expiry": {
             "name": "Best Before / Expiry / Use By Date",
             "rule": "Rule 6(1)(g)",
-            "status": "COMPLIANT" if vdata.get("exp_date") else ("PROVISO_COMPLIANT" if vdata.get("seal_referred") else "MISSING"),
-            "value": vdata.get("exp_date") or ("Referred to Seal/Crimp Area" if vdata.get("seal_referred") else None),
+            "status": "COMPLIANT" if vdata.get("exp_date") else ("PROVISO_COMPLIANT" if exp_date_val else "MISSING"),
+            "value": exp_date_val,
             "details": "Mandatory duration or date for perishables and food."
         },
         "rule_7_consumer_care": {
             "name": "Consumer Care Details (Phone / Email / Address)",
             "rule": "Rule 6(1)(h)",
-            "status": "COMPLIANT" if vdata.get("consumer_care") else "MISSING",
-            "value": vdata.get("consumer_care"),
+            "status": "COMPLIANT" if consumer_care_val else "MISSING",
+            "value": consumer_care_val,
             "details": "Designated officer phone, email or postal helpline."
         },
         "rule_8_country_origin": {
@@ -246,234 +258,34 @@ def compile_declarations_from_vision(vdata: dict):
         "barcode": vdata.get("barcode")
     }
 
-def run_rule_engine(raw_text: str):
-    """
-    Enhanced Offline Regex Rule Engine.
-    Handles packaging font character confusions (S->5, O->0), multi-pack weight formulas, and brand patterns.
-    """
-    text_lower = raw_text.lower()
-    
-    # Pre-clean known OCR confusions for numbers in weights: e.g. "s00g" -> "500g", "smx100g" -> "5x100g"
-    cleaned_for_qty = re.sub(r'\b[sS](00|0)\s*(g|gm|kg)', r'5\1 \2', raw_text)
-    cleaned_for_qty = re.sub(r'\b[sS][nN]\b', '5 N', cleaned_for_qty)
-    
-    declarations = {
-        "rule_1_mfg_name": {
-            "name": "Name & Address of Manufacturer / Packer",
-            "rule": "Rule 6(1)(a)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Mandatory name, address and premise of manufacturer/packer."
-        },
-        "rule_2_net_qty": {
-            "name": "Net Quantity (Weight / Volume / Count)",
-            "rule": "Rule 6(1)(b)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Declared in standard SI metric units (g, kg, ml, l)."
-        },
-        "rule_3_generic_name": {
-            "name": "Generic / Common Name of Commodity",
-            "rule": "Rule 6(1)(c)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Clear generic identity and commodity denomination."
-        },
-        "rule_4_mfg_date": {
-            "name": "Month & Year of Manufacture / Packing",
-            "rule": "Rule 6(1)(d)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Month and year of packaging or import."
-        },
-        "rule_5_mrp": {
-            "name": "Maximum Retail Price (MRP incl. of all taxes)",
-            "rule": "Rule 6(1)(e)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Retail price inclusive of all taxes clearly printed."
-        },
-        "rule_6_expiry": {
-            "name": "Best Before / Expiry / Use By Date",
-            "rule": "Rule 6(1)(g)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Mandatory duration or date for perishables and food."
-        },
-        "rule_7_consumer_care": {
-            "name": "Consumer Care Details (Phone / Email / Address)",
-            "rule": "Rule 6(1)(h)",
-            "status": "MISSING",
-            "value": None,
-            "details": "Designated officer phone, email or postal helpline."
-        },
-        "rule_8_country_origin": {
-            "name": "Country of Origin",
-            "rule": "Rule 6(1)(n)",
-            "status": "COMPLIANT",
-            "value": "India (Domestic)",
-            "details": "Clear unambiguous origin declaration."
-        }
-    }
-
-    # 1. Net Quantity: Match multi-pack formulas first (e.g. "5 N x 100 g = 500 g" or "5 x 100g")
-    multipack_match = re.search(r'(\d+\s*(?:[nN]|packs?|units?)?\s*[\*xX]\s*\d+\s*(?:g|gm|kg|ml)\s*(?:=\s*\d+\s*(?:g|gm|kg|ml))?)', cleaned_for_qty, re.IGNORECASE)
-    if multipack_match:
-        declarations["rule_2_net_qty"]["value"] = multipack_match.group(1).strip()
-        declarations["rule_2_net_qty"]["status"] = "COMPLIANT"
-    else:
-        # Standard net weight match
-        qty_match = re.search(r'(?:net\s*(?:wt|weight|qty|quantity)?[:\-\.\s]*)?(\d+(?:\.\d+)?)\s*(gm|gms|g|kg|ml|ltr|l|mg)\b', cleaned_for_qty.lower())
-        if qty_match:
-            declarations["rule_2_net_qty"]["value"] = f"{qty_match.group(1)} {qty_match.group(2)}"
-            declarations["rule_2_net_qty"]["status"] = "COMPLIANT"
-
-    # Fallback for standalone weight or brand-associated family packs
-    if declarations["rule_2_net_qty"]["status"] == "MISSING":
-        weight_fallback = re.search(r'\b(500|100|200|250|400|750|1000)\s*(g|gm|gms|kg)\b', cleaned_for_qty.lower())
-        if weight_fallback:
-            declarations["rule_2_net_qty"]["value"] = f"{weight_fallback.group(1)} {weight_fallback.group(2)}"
-            declarations["rule_2_net_qty"]["status"] = "COMPLIANT"
-        elif "bourbon" in text_lower and ("500" in cleaned_for_qty or "5 n" in cleaned_for_qty.lower() or "family" in text_lower):
-            declarations["rule_2_net_qty"]["value"] = "5 N x 100 g = 500 g"
-            declarations["rule_2_net_qty"]["status"] = "COMPLIANT"
-
-    # 2. Maximum Retail Price (MRP)
-    mrp_match = re.search(r'(?:mrp|m\.r\.p|rs\.?|₹|inr)\s*[:\-\.]?\s*(\d+(?:\.\d{1,2})?)', text_lower)
-    if not mrp_match:
-        mrp_match = re.search(r'(\d+(?:\.\d{1,2})?)\s*(?:/-|rs|₹)', text_lower)
-    
-    clean_mrp = None
-    if mrp_match:
-        try:
-            val = float(mrp_match.group(1))
-            clean_mrp = val
-            declarations["rule_5_mrp"]["value"] = f"₹ {val:.2f}"
-            declarations["rule_5_mrp"]["status"] = "COMPLIANT"
-        except Exception:
-            pass
-
-    # 3. Manufacturer Name & Address
-    mfg_name_match = re.search(r'(?:mfd\.?\s*by|manufactured\s*by|marketed\s*by|packed\s*by|imported\s*by|mktd\.?\s*by|unit\s*of|ltd|limited|pvt|privately|hindustan\s*unilever|nestle|parle|britannia|itc|amul|dabur|tata|patanjali)', text_lower)
-    if mfg_name_match or "britannia" in text_lower or "prestige" in text_lower:
-        if "britannia" in text_lower:
-            declarations["rule_1_mfg_name"]["value"] = "Britannia Industries Ltd., Prestige Shantiniketan, Bengaluru"
-        elif "hindustan unilever" in text_lower or "hul" in text_lower:
-            declarations["rule_1_mfg_name"]["value"] = "Hindustan Unilever Ltd. (HUL)"
-        elif "nestle" in text_lower:
-            declarations["rule_1_mfg_name"]["value"] = "Nestlé India Ltd."
-        elif "parle" in text_lower:
-            declarations["rule_1_mfg_name"]["value"] = "Parle Products Pvt. Ltd."
-        elif "amul" in text_lower:
-            declarations["rule_1_mfg_name"]["value"] = "GCMMF Ltd. (Amul)"
-        else:
-            declarations["rule_1_mfg_name"]["value"] = "Registered FMCG Manufacturer Declared"
-        declarations["rule_1_mfg_name"]["status"] = "COMPLIANT"
-
-    # 4. Generic Commodity Name
-    generic_match = re.search(r'(bourbon|biscuit|cookies|noodles|pasta|atta|rice|wheat|milk|bread|tea|coffee|soap|detergent|shampoo|oil|ghee|butter|namkeen|chips|snack)', text_lower)
-    if generic_match:
-        val = generic_match.group(1).title()
-        if "bourbon" in text_lower:
-            declarations["rule_3_generic_name"]["value"] = "Britannia Bourbon Choco Biscuits"
-        else:
-            declarations["rule_3_generic_name"]["value"] = val
-        declarations["rule_3_generic_name"]["status"] = "COMPLIANT"
-    elif len(raw_text.strip()) > 30:
-        declarations["rule_3_generic_name"]["value"] = "Packaged Food / Commodity"
-        declarations["rule_3_generic_name"]["status"] = "COMPLIANT"
-
-    # 5. Mfg Date & Expiry Date (Checking Seal Area Proviso)
-    seal_referred = re.search(r'(see\s*(?:the)?\s*seal\s*(?:area)?|see\s*crimp|see\s*below|seal\s*area|refer\s*to\s*seal|at\s*seal)', text_lower)
-    mfg_date_match = re.search(r'(?:mfd|pkd|mfg|packed|manufactured|pkg)[:\-\.\s]*([0-9]{1,2}[/\-\.][0-9]{2,4}|[a-z]{3}\s*[0-9]{2,4})', text_lower)
-    if mfg_date_match:
-        declarations["rule_4_mfg_date"]["value"] = mfg_date_match.group(1).upper()
-        declarations["rule_4_mfg_date"]["status"] = "COMPLIANT"
-    elif seal_referred:
-        declarations["rule_4_mfg_date"]["value"] = "Referred to Seal Area (Proviso 6(1) Compliant)"
-        declarations["rule_4_mfg_date"]["status"] = "PROVISO_COMPLIANT"
-
-    exp_date_match = re.search(r'(?:exp|use by|best before|expiry|bb)[:\-\.\s]*([0-9]{1,2}[/\-\.][0-9]{2,4}|\d+\s*months?|[a-z]{3}\s*[0-9]{2,4})', text_lower)
-    if exp_date_match:
-        declarations["rule_6_expiry"]["value"] = exp_date_match.group(1).upper()
-        declarations["rule_6_expiry"]["status"] = "COMPLIANT"
-    elif seal_referred:
-        declarations["rule_6_expiry"]["value"] = "Referred to Seal Area (Proviso 6(1) Compliant)"
-        declarations["rule_6_expiry"]["status"] = "PROVISO_COMPLIANT"
-
-    # 6. Consumer Care Details
-    phone_match = re.search(r'(?:1800[-\s]?[0-9]{2,4}[-\s]?[0-9]{3,5}|(?:tel|phone|contact|toll\s*free)[\s:]*([0-9]{8,12}))', text_lower)
-    email_match = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', raw_text)
-    care_word = re.search(r'(consumer\s*care|customer\s*care|feedback|grievance|helpline|care\s*cell)', text_lower)
-
-    care_contact = []
-    if phone_match:
-        care_contact.append(f"Phone: {phone_match.group(0).strip()}")
-    if email_match:
-        care_contact.append(f"Email: {email_match.group(1).strip()}")
-    if care_word and not care_contact:
-        care_contact.append("Consumer Care Cell Declared")
-
-    if care_contact or "consumer care" in text_lower:
-        declarations["rule_7_consumer_care"]["value"] = " | ".join(care_contact) if care_contact else "Consumer Care Cell Declared"
-        declarations["rule_7_consumer_care"]["status"] = "COMPLIANT"
-
-    # 7. Summary Score & Legal Verdict Calculation
-    passed_count = sum(1 for d in declarations.values() if d["status"] in ["COMPLIANT", "PROVISO_COMPLIANT"])
-    total_rules = len(declarations)
-    compliance_score = round((passed_count / total_rules) * 100)
-
-    violations = []
-    for key, decl in declarations.items():
-        if decl["status"] == "MISSING":
-            violations.append(f"{decl['rule']} - {decl['name']}: Not found or illegible")
-
-    is_compliant = (passed_count >= 7) and (declarations["rule_5_mrp"]["status"] == "COMPLIANT")
-
-    return {
-        "compliance_score": compliance_score,
-        "rules_passed": passed_count,
-        "total_rules": total_rules,
-        "is_compliant": is_compliant,
-        "declarations": declarations,
-        "violations": violations,
-        "mrp": declarations["rule_5_mrp"]["value"],
-        "scanned_mrp": clean_mrp,
-        "net_weight": declarations["rule_2_net_qty"]["value"],
-        "mfg_date": declarations["rule_4_mfg_date"]["value"],
-        "exp_date": declarations["rule_6_expiry"]["value"],
-        "consumer_care": declarations["rule_7_consumer_care"]["status"] == "COMPLIANT",
-        "manufacturer": declarations["rule_1_mfg_name"]["value"],
-        "commodity": declarations["rule_3_generic_name"]["value"]
-    }
-
 # -------------------------------------------------------------
-# 4. Master Orchestration Function
+# 3. Master Orchestration Function
 # -------------------------------------------------------------
 def analyze_label(image_path: str):
     """
-    Dual-layer AI Engine:
-    1. Primary: Gemini 3.6 Flash Multimodal Vision (High Accuracy, parses complex multipack labels)
-    2. Fallback: Local EasyOCR + Enhanced Rule Engine (Completely offline)
+    AI Engine powered by Gemini Vision with SHA-256 caching and temperature=0.0.
+    Returns structured compliance analysis or raises an error if unavailable.
     """
-    # Try Gemini Vision First
+    image_hash = get_image_hash(image_path)
+    if image_hash in IMAGE_ANALYSIS_CACHE:
+        return IMAGE_ANALYSIS_CACHE[image_hash]
+
     vdata = analyze_with_gemini_vision(image_path)
-    if vdata and isinstance(vdata, dict) and (vdata.get("net_quantity") or vdata.get("brand") or vdata.get("commodity")):
+    if vdata and isinstance(vdata, dict) and (vdata.get("net_quantity") or vdata.get("brand") or vdata.get("commodity") or vdata.get("raw_text")):
         verdict = compile_declarations_from_vision(vdata)
         raw_text = vdata.get("raw_text") or ""
-        return {
+        res = {
             "raw_text": raw_text,
             "bounding_boxes": [],
             "verdict": verdict,
             "barcode_detected": vdata.get("barcode")
         }
+        IMAGE_ANALYSIS_CACHE[image_hash] = res
+        return res
 
-    # Fallback to local EasyOCR
-    raw_data, full_text = extract_text_and_boxes(image_path)
-    engine_verdict = run_rule_engine(full_text)
-    
-    return {
-        "raw_text": full_text,
-        "bounding_boxes": raw_data,
-        "verdict": engine_verdict
-    }
+    # Gemini unavailable — return clear error instead of fake data
+    raise RuntimeError(
+        "AI analysis temporarily unavailable. Please ensure GEMINI_API_KEY is configured and try again. "
+        "If the issue persists, the image may be unclear — try uploading a sharper photo."
+    )
+

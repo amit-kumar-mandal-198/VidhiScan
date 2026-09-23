@@ -299,17 +299,32 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Direct Multimodal Gemini Vision Inference across all uploaded angles/faces
-    const imageParts = await Promise.all(
-      files.slice(0, 4).map(async (f) => {
-        const buf = await f.arrayBuffer();
-        return {
-          inline_data: {
-            mime_type: f.type || "image/jpeg",
-            data: Buffer.from(buf).toString("base64")
-          }
-        };
-      })
+    const imageBuffers = await Promise.all(
+      files.slice(0, 4).map(async (f) => Buffer.from(await f.arrayBuffer()))
     );
+
+    // Compute SHA-256 hash for exact scan reproducibility
+    const crypto = await import("crypto");
+    const hasher = crypto.createHash("sha256");
+    for (const b of imageBuffers) {
+      hasher.update(b);
+    }
+    const imageHash = hasher.digest("hex");
+
+    // In-memory route cache check
+    if (!(globalThis as any)._NEXT_SCAN_CACHE) {
+      (globalThis as any)._NEXT_SCAN_CACHE = new Map();
+    }
+    if ((globalThis as any)._NEXT_SCAN_CACHE.has(imageHash)) {
+      return NextResponse.json((globalThis as any)._NEXT_SCAN_CACHE.get(imageHash));
+    }
+
+    const imageParts = imageBuffers.map((buf, idx) => ({
+      inline_data: {
+        mime_type: files[idx].type || "image/jpeg",
+        data: buf.toString("base64")
+      }
+    }));
 
     const isMultiAngle = files.length > 1;
     const prompt = `You are a Senior Legal Metrology (Packaged Commodities) Rules, 2011 forensic enforcement auditor.
@@ -362,7 +377,8 @@ Return ONLY valid JSON with this schema:
               ]
             }],
             generationConfig: {
-              response_mime_type: "application/json"
+              response_mime_type: "application/json",
+              temperature: 0.0
             }
           }),
           signal: controller.signal
@@ -374,7 +390,7 @@ Return ONLY valid JSON with this schema:
           let rawText = gJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
           rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
           aiData = JSON.parse(rawText);
-          if (aiData && typeof aiData === "object" && (aiData.brand || aiData.commodity || aiData.scanned_mrp)) {
+          if (aiData && typeof aiData === "object" && (aiData.brand || aiData.commodity || aiData.scanned_mrp || aiData.raw_text)) {
             break; // Succeeded with valid packaging data
           }
         } else {
@@ -385,61 +401,12 @@ Return ONLY valid JSON with this schema:
       }
     }
 
-    // If Gemini parsing did not succeed, synthesize resilient fallback
-    if (!aiData || typeof aiData !== "object") {
-      const combinedNames = files.map(f => (f.name || "").toLowerCase()).join(" ");
-      const isBourbon = combinedNames.includes("bourbon");
-      const isSurf = combinedNames.includes("surf");
-
-      if (isBourbon) {
-        aiData = {
-          brand: "Britannia",
-          commodity: "The Original Britannia Bourbon Creme Biscuits",
-          net_quantity: "5 x 100 g = 500 g",
-          scanned_mrp: null,
-          mfg_date: null,
-          exp_date: null,
-          seal_referred: true,
-          manufacturer: "Marketed By: BRITANNIA INDUSTRIES LTD., 5/1 A Hungerford Street, Kolkata-700017",
-          consumer_care: "Consumer Care Cell: 1-800-4254494 | feedback@britindia.com",
-          country_of_origin: "India",
-          barcode: "8901063139350",
-          raw_text: "THE ORIGINAL BRITANNIA BOURBON BISCUITS NET WEIGHT 5 N x 100 g = 500 g MRP: (INCL. OF ALL TAXES) PKD: USE BY: Marketed By: BRITANNIA INDUSTRIES LTD.",
-          violations: ["Unprinted MRP (Maximum Retail Price blank in statutory box)", "Missing Manufacturing/Packing Date stamp"]
-        };
-      } else if (isSurf) {
-        aiData = {
-          brand: "Hindustan Unilever Ltd",
-          commodity: "Surf Excel Easy Wash",
-          net_quantity: "1 kg",
-          scanned_mrp: 469.0,
-          mfg_date: "01/2026",
-          exp_date: "Best Before 24 Months",
-          seal_referred: false,
-          manufacturer: "Hindustan Unilever Ltd, B.D. Sawant Marg, Andheri (E), Mumbai 400099",
-          consumer_care: "care@hul.com | 1800-10-22-221",
-          country_of_origin: "India",
-          barcode: "8901030382218",
-          raw_text: "SURF EXCEL EASY WASH 1kg Net Weight: 1 kg MRP: Rs. 469.00 Mfd by Hindustan Unilever Ltd Mumbai",
-          violations: []
-        };
-      } else {
-        aiData = {
-          brand: "Registered Domestic Packer",
-          commodity: "Packaged Retail Commodity",
-          net_quantity: "Standard Pack",
-          scanned_mrp: null,
-          mfg_date: null,
-          exp_date: null,
-          seal_referred: false,
-          manufacturer: "FMCG Manufacturer / Packer under Rule 6",
-          consumer_care: "Consumer Grievance Cell | 1800-11-4000",
-          country_of_origin: "India",
-          barcode: null,
-          raw_text: "Packaging Declarations Inspected under Legal Metrology Rules, 2011",
-          violations: []
-        };
-      }
+    // Reject scan if AI parsing completely failed; do NOT return fake mock data!
+    if (!aiData || typeof aiData !== "object" || (!aiData.brand && !aiData.commodity && !aiData.raw_text)) {
+      return NextResponse.json(
+        { error: "AI Scan was unable to read the packaging text clearly. Please ensure the label is well-lit and retry with a sharper image." },
+        { status: 422 }
+      );
     }
 
     // 3. Resolve Barcode via Open Food Facts (Real Indian & Global Catalog)
@@ -499,9 +466,29 @@ Return ONLY valid JSON with this schema:
       }
     }
 
-    // 5. Declarations Dictionary (Rule 6 Compliance Audit)
+    // 5. Declarations Dictionary (Rule 6 Compliance Audit with Regex Fallbacks)
+    const rawTextLower = (aiData.raw_text || "").toLowerCase();
+    const hasDateInText = /\b(mfd|pkd|mfg|packed|use by|best before|exp|expiry|\d{2}\/\d{2,4})\b/i.test(rawTextLower);
+    const hasSealRefInText = aiData.seal_referred || /\b(crimp|seal|crown|neck|bottom|see side)\b/i.test(rawTextLower);
+    const hasCareInText = Boolean(aiData.consumer_care) || /(\b1800\b|@|email|help|care|toll|cell|phone|\d{10})/i.test(rawTextLower);
+    const hasMfgInText = Boolean(aiData.manufacturer) || /\b(mfg by|packed by|marketed by|ltd|pvt|corp|unit|factory|address)\b/i.test(rawTextLower);
+
     const effectiveBrand = aiData.brand || offProduct?.brand || (matchedProduct ? matchedProduct.brand : null);
-    const effectiveManufacturer = aiData.manufacturer || (matchedProduct ? matchedProduct.brand : null) || effectiveBrand;
+    const effectiveManufacturer = aiData.manufacturer || (matchedProduct ? matchedProduct.brand : null) || (hasMfgInText ? "Declared on Packaging Text" : null) || effectiveBrand;
+
+    let mfgDateValue = aiData.mfg_date;
+    if (!mfgDateValue) {
+      if (hasSealRefInText) mfgDateValue = "Referred to Seal/Crimp Area";
+      else if (hasDateInText) mfgDateValue = "Date Stamped on Pack";
+    }
+
+    let expDateValue = aiData.exp_date;
+    if (!expDateValue) {
+      if (hasSealRefInText) expDateValue = "Referred to Seal/Crimp Area";
+      else if (hasDateInText) expDateValue = "Best Before / Expiry Stamped on Pack";
+    }
+
+    let consumerCareValue = aiData.consumer_care || (hasCareInText ? "Consumer Care Support Available" : null);
 
     const declarations: Record<string, any> = {
       rule_1_mfg_name: {
@@ -528,8 +515,8 @@ Return ONLY valid JSON with this schema:
       rule_4_mfg_date: {
         name: "Month & Year of Manufacture / Packing",
         rule: "Rule 6(1)(d)",
-        status: aiData.mfg_date ? "COMPLIANT" : (aiData.seal_referred ? "PROVISO_COMPLIANT" : "MISSING"),
-        value: aiData.mfg_date || (aiData.seal_referred ? "Referred to Seal/Crimp Area" : null),
+        status: aiData.mfg_date ? "COMPLIANT" : (mfgDateValue ? "PROVISO_COMPLIANT" : "MISSING"),
+        value: mfgDateValue,
         details: "Month and year of packaging or import."
       },
       rule_5_mrp: {
@@ -542,15 +529,15 @@ Return ONLY valid JSON with this schema:
       rule_6_expiry: {
         name: "Best Before / Expiry / Use By Date",
         rule: "Rule 6(1)(g)",
-        status: aiData.exp_date ? "COMPLIANT" : (aiData.seal_referred ? "PROVISO_COMPLIANT" : "MISSING"),
-        value: aiData.exp_date || (aiData.seal_referred ? "Referred to Seal/Crimp Area" : null),
+        status: aiData.exp_date ? "COMPLIANT" : (expDateValue ? "PROVISO_COMPLIANT" : "MISSING"),
+        value: expDateValue,
         details: "Mandatory duration or date for perishables and food."
       },
       rule_7_consumer_care: {
         name: "Consumer Care Details (Phone / Email / Address)",
         rule: "Rule 6(1)(h)",
-        status: aiData.consumer_care ? "COMPLIANT" : "MISSING",
-        value: aiData.consumer_care || null,
+        status: consumerCareValue ? "COMPLIANT" : "MISSING",
+        value: consumerCareValue,
         details: "Designated officer phone, email or postal helpline."
       },
       rule_8_country_origin: {
@@ -589,7 +576,7 @@ Return ONLY valid JSON with this schema:
 
     const scanId = Math.floor(1000 + Math.random() * 9000);
 
-    return NextResponse.json({
+    const responseData = {
       scan_id: scanId,
       images_count: files.length,
       is_multi_angle: files.length > 1,
@@ -605,9 +592,9 @@ Return ONLY valid JSON with this schema:
           commodity: aiData.commodity || offProduct?.product_name || matchedProduct?.product || "Packaged Retail Commodity",
           scanned_mrp: cleanScannedMrp,
           net_weight: aiData.net_quantity || offProduct?.quantity || matchedProduct?.net_weight || null,
-          mfg_date: aiData.mfg_date || (aiData.seal_referred ? "Referred to Seal/Crimp Area" : null),
-          exp_date: aiData.exp_date || (aiData.seal_referred ? "Referred to Seal/Crimp Area" : null),
-          consumer_care: Boolean(aiData.consumer_care),
+          mfg_date: mfgDateValue,
+          exp_date: expDateValue,
+          consumer_care: Boolean(consumerCareValue),
           manufacturer: effectiveManufacturer,
           barcode: aiData.barcode || offProduct?.barcode || matchedProduct?.barcode || null,
           declarations: declarations,
@@ -678,7 +665,13 @@ Return ONLY valid JSON with this schema:
               is_blacklisted: false
             }
       }
-    });
+    };
+
+    if (imageHash && (globalThis as any)._NEXT_SCAN_CACHE) {
+      (globalThis as any)._NEXT_SCAN_CACHE.set(imageHash, responseData);
+    }
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error("Critical scan route error:", error);
     return NextResponse.json(
