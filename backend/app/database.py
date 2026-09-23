@@ -3,7 +3,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vidhiscan.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_SQLITE_PATH = os.path.join(BASE_DIR, "vidhiscan.db").replace("\\", "/")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}")
 
 # Handle standard postgres:// scheme if provided by cloud providers
 if DATABASE_URL.startswith("postgres://"):

@@ -7,6 +7,8 @@ import PIL.Image
 from dotenv import load_dotenv
 
 # Load environment variables (such as GEMINI_API_KEY)
+_backend_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+load_dotenv(_backend_env)
 load_dotenv()
 
 # Set environment variable to fix Windows encoding crash during model download
@@ -77,8 +79,8 @@ Return a valid JSON object matching this schema:
 }
 Return ONLY pure valid JSON."""
 
-        # Try gemini-3.5-flash-lite first (sub-3s inference), then gemini-3.6-flash
-        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        # Try fastest multimodal models with resilient fallbacks
+        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.5-flash"]
         for mname in models_to_try:
             try:
                 model = genai.GenerativeModel(mname)

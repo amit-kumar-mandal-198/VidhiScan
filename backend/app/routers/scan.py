@@ -103,6 +103,9 @@ async def upload_and_scan(
     registry_check = verify_commodity_compliance(db, ai_result["raw_text"], clean_mrp, barcode)
     ai_result["master_registry"] = registry_check
 
+    # Compute baseline passed rules count
+    passed_count = sum(1 for d in verdict.get("declarations", {}).values() if d.get("status") in ["COMPLIANT", "PROVISO_COMPLIANT"])
+
     # If product matched master registry, ensure registered net weight and brand are reflected
     if registry_check.get("registry_status") == "MATCHED_MASTER_REGISTRY":
         off_net_qty = registry_check.get("official_net_weight")
@@ -146,6 +149,29 @@ async def upload_and_scan(
     if not matched_company:
         matched_company = match_company_for_scan(db, ai_result["raw_text"], barcode, verdict.get("manufacturer"))
 
+    # Sanitize Form parameter inputs
+    safe_lat = None
+    try:
+        if latitude is not None and not hasattr(latitude, 'default') and str(latitude).strip() != "":
+            safe_lat = float(latitude)
+    except Exception:
+        safe_lat = None
+
+    safe_lng = None
+    try:
+        if longitude is not None and not hasattr(longitude, 'default') and str(longitude).strip() != "":
+            safe_lng = float(longitude)
+    except Exception:
+        safe_lng = None
+
+    safe_loc = None
+    if location_name is not None and not hasattr(location_name, 'default'):
+        safe_loc = str(location_name)
+
+    safe_inspected_by = "Public"
+    if inspected_by is not None and not hasattr(inspected_by, 'default') and str(inspected_by).strip() != "":
+        safe_inspected_by = str(inspected_by)
+
     # 7. Save to Database
     db_scan = ScanReport(
         image_path=f"/{file_path}",
@@ -156,10 +182,10 @@ async def upload_and_scan(
         scanned_net_weight=str(verdict.get("net_weight") or ""),
         is_compliant=bool(verdict.get("is_compliant", False)),
         fraud_type=fraud_type,
-        inspected_by=inspected_by,
-        latitude=latitude,
-        longitude=longitude,
-        location_name=location_name,
+        inspected_by=safe_inspected_by,
+        latitude=safe_lat,
+        longitude=safe_lng,
+        location_name=safe_loc,
         product_id=registry_check.get("product_id"),
         company_id=matched_company.id if matched_company else None
     )
