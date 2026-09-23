@@ -202,13 +202,87 @@ def seed_default_companies_if_empty(db: Session):
 
         db.commit()
 
-        # Link existing products in ProductRegistry to companies
-        products = db.query(ProductRegistry).all()
-        for p in products:
-            for c_name, comp in created_companies.items():
-                if comp.brand_slug in p.brand_name.lower() or p.brand_name.lower() in c_name.lower():
-                    p.company_id = comp.id
-                    break
+    # Seed baseline products if ProductRegistry is empty
+    if db.query(ProductRegistry).count() == 0:
+        amul_comp = db.query(Company).filter(Company.brand_slug == "amul").first()
+        hul_comp = db.query(Company).filter(Company.brand_slug == "hul").first()
+        nestle_comp = db.query(Company).filter(Company.brand_slug == "nestle").first()
+        fortune_comp = db.query(Company).filter(Company.brand_slug == "adani-wilmar").first()
+
+        default_products = [
+            {
+                "barcode": "8901262010114",
+                "brand_name": "Amul / GCMMF",
+                "product_name": "Amul Pasteurised Butter 500g Carton",
+                "official_mrp": 285.0,
+                "net_weight": "500g",
+                "shelf_life_days": 365,
+                "category": "Dairy & Edible Oils",
+                "company_id": amul_comp.id if amul_comp else None
+            },
+            {
+                "barcode": "8901262010121",
+                "brand_name": "Amul / GCMMF",
+                "product_name": "Amul Taaza Homogenised Toned Milk 1L",
+                "official_mrp": 72.0,
+                "net_weight": "1000ml",
+                "shelf_life_days": 180,
+                "category": "Dairy & Edible Oils",
+                "company_id": amul_comp.id if amul_comp else None
+            },
+            {
+                "barcode": "8901262010138",
+                "brand_name": "Amul / GCMMF",
+                "product_name": "Amul Pure Ghee 1L Tin",
+                "official_mrp": 650.0,
+                "net_weight": "1L",
+                "shelf_life_days": 270,
+                "category": "Dairy & Edible Oils",
+                "company_id": amul_comp.id if amul_comp else None
+            },
+            {
+                "barcode": "8901262010145",
+                "brand_name": "Amul / GCMMF",
+                "product_name": "Amul Masti Spiced Buttermilk 200ml Pouch",
+                "official_mrp": 15.0,
+                "net_weight": "200ml",
+                "shelf_life_days": 90,
+                "category": "Dairy & Edible Oils",
+                "company_id": amul_comp.id if amul_comp else None
+            },
+            {
+                "barcode": "8901262010152",
+                "brand_name": "Amul / GCMMF",
+                "product_name": "Amul Processed Cheese Slices 200g",
+                "official_mrp": 145.0,
+                "net_weight": "200g",
+                "shelf_life_days": 180,
+                "category": "Dairy & Edible Oils",
+                "company_id": amul_comp.id if amul_comp else None
+            },
+            {
+                "barcode": "8901030012345",
+                "brand_name": "Hindustan Unilever Ltd",
+                "product_name": "Surf Excel Easy Wash Detergent Powder 1kg",
+                "official_mrp": 140.0,
+                "net_weight": "1kg",
+                "shelf_life_days": 720,
+                "category": "Household & Detergents",
+                "company_id": hul_comp.id if hul_comp else None
+            },
+            {
+                "barcode": "8901058852331",
+                "brand_name": "Nestle India Limited",
+                "product_name": "Maggi 2-Minute Masala Instant Noodles 70g",
+                "official_mrp": 14.0,
+                "net_weight": "70g",
+                "shelf_life_days": 270,
+                "category": "Packaged Snacks & Confectionery",
+                "company_id": nestle_comp.id if nestle_comp else None
+            }
+        ]
+        for prod_data in default_products:
+            db.add(ProductRegistry(**prod_data))
         db.commit()
 
 def match_company_for_scan(db: Session, text: str, barcode: Optional[str] = None, brand_name: Optional[str] = None) -> Optional[Company]:

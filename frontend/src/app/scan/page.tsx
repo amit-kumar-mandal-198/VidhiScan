@@ -1214,11 +1214,13 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                         <span className={`text-[11px] font-mono px-2.5 py-1 rounded-chip border font-semibold ${
                           masterRegistry.is_overcharged
                             ? "bg-red-100 text-red-800 border-red-300"
-                            : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : (!scanResult?.scanned_mrp ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300")
                         }`}>
                           {masterRegistry.is_overcharged
                             ? `⚠️ Overcharged by ₹${formatCurrency(masterRegistry.price_discrepancy)}`
-                            : `✓ Clean MRP: ₹${formatCurrency(scanResult.scanned_mrp || masterRegistry.official_mrp)}`}
+                            : (!scanResult?.scanned_mrp
+                              ? `⚠️ MRP Unprinted / Blank on Package`
+                              : `✓ Clean MRP: ₹${formatCurrency(scanResult.scanned_mrp)}`)}
                         </span>
                       )}
 
@@ -1246,7 +1248,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       <Gift className="w-4 h-4 text-amber-600 shrink-0" />
                       <div className="text-xs">
                         <span className="font-bold text-amber-950">Jan-Prahari Citizen Bounty Eligible: </span>
-                        <span className="text-amber-900">Confirmed violation qualifies for ₹500 DBT reward.</span>
+                        <span className="text-amber-900">Confirmed packaging violation qualifies for ₹500 DBT reward.</span>
                       </div>
                     </div>
                     <button
@@ -1307,20 +1309,22 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                         className={`p-4 rounded-card border text-xs space-y-3 shadow-soft font-mono ${
                           masterRegistry.is_overcharged
                             ? "bg-tile-peach-bg/30 border-tile-peach-fg/40 text-ink-900"
-                            : "bg-tile-mint-bg/30 border-tile-mint-fg/40 text-ink-900"
+                            : (!scanResult.scanned_mrp
+                              ? "bg-amber-50 border-amber-300 text-amber-950"
+                              : "bg-tile-mint-bg/30 border-tile-mint-fg/40 text-ink-900")
                         }`}
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-semibold flex items-center space-x-1.5 text-xs">
-                            {masterRegistry.is_overcharged ? (
-                              <AlertTriangle className="w-4 h-4 text-tile-peach-fg" />
+                            {masterRegistry.is_overcharged || !scanResult.scanned_mrp ? (
+                              <AlertTriangle className="w-4 h-4 text-amber-600" />
                             ) : (
                               <Award className="w-4 h-4 text-tile-mint-fg" />
                             )}
                             <span>Central FMCG Master Registry Price Check</span>
                           </span>
                           <span className="font-mono text-[10px] bg-surface-solid px-2.5 py-0.5 rounded-chip border border-border font-semibold text-ink-900">
-                            {masterRegistry.registered_brand}
+                            {masterRegistry.registered_brand || "FMCG Database"}
                           </span>
                         </div>
 
@@ -1328,14 +1332,24 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                           <div className="p-2.5 bg-white/80 rounded-control border border-border">
                             <span className="text-ink-500 text-[10px] block">Official Approved MRP:</span>
                             <span className="font-semibold text-ink-900 text-sm">
-                              ₹ {formatCurrency(masterRegistry.official_mrp)}
+                              {masterRegistry.official_mrp && masterRegistry.official_mrp > 0 ? (
+                                `₹ ${formatCurrency(masterRegistry.official_mrp)}`
+                              ) : (
+                                <span className="text-ink-400 text-xs italic">Unregistered item</span>
+                              )}
                             </span>
                           </div>
                           <div className="p-2.5 bg-white/80 rounded-control border border-border">
                             <span className="text-ink-500 text-[10px] block">Detected Shelf Price:</span>
-                            <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
-                              ₹ {formatCurrency(scanResult.scanned_mrp)}
-                            </span>
+                            {scanResult.scanned_mrp && scanResult.scanned_mrp > 0 ? (
+                              <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
+                                ₹ {formatCurrency(scanResult.scanned_mrp)}
+                              </span>
+                            ) : (
+                              <span className="text-red-600 font-bold text-xs bg-red-50 px-2 py-0.5 rounded border border-red-200 inline-block">
+                                Unprinted / Missing Stamp
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1362,6 +1376,17 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                               <FileText className="w-3.5 h-3.5 text-ink-900" />
                               <span>Generate National Consumer Helpline (1915) Complaint</span>
                             </button>
+                          </div>
+                        ) : !scanResult.scanned_mrp ? (
+                          <div className="p-2.5 rounded-control bg-amber-100/70 border border-amber-300 text-amber-950 text-xs space-y-1">
+                            <p className="font-semibold flex items-center gap-1.5 text-amber-900">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Rule 6(1)(e) Violation: Unprinted Maximum Retail Price</span>
+                            </p>
+                            <p className="text-[11px] text-amber-800 leading-relaxed">
+                              {masterRegistry.official_mrp ? `Official registered MRP is ₹${formatCurrency(masterRegistry.official_mrp)}, but ` : ""}
+                              the scanned package displays no printed price in the statutory MRP box. Under Section 36(1) of the Legal Metrology Act, selling pre-packaged commodities without printed MRP is a punishable statutory offence.
+                            </p>
                           </div>
                         ) : (
                           <p className="text-tile-mint-fg font-medium text-xs flex items-center gap-1.5">
