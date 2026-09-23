@@ -35,6 +35,7 @@ import {
   Download,
 } from "lucide-react";
 import VidhiBadge from "@/components/VidhiBadge";
+import { generateScanReportPdf } from "@/lib/pdfReportGenerator";
 
 interface ClaimedStatus {
   status: "idle" | "claimed" | "en_route" | "on_site" | "seized" | "dismissed";
@@ -805,6 +806,39 @@ export default function InspectorPortal() {
                           <span>Evidence</span>
                         </button>
                       )}
+
+                      {/* Download Official Report PDF */}
+                      <button
+                        onClick={async () => {
+                          if (scan.notice_url) {
+                            const raw = scan.notice_url.replace(/^\/?static\//, "");
+                            window.open(`/api/report/${raw}`, "_blank");
+                          } else {
+                            const pdfDataUri = await generateScanReportPdf({
+                              scanId: scan.id || 1085,
+                              commodity: scan.commodity || "Packaged Retail Commodity",
+                              isCompliant: Boolean(scan.is_compliant),
+                              complianceScore: scan.is_compliant ? 100 : 50,
+                              rulesPassed: scan.is_compliant ? 8 : 5,
+                              scannedMrp: scan.scanned_mrp,
+                              officialMrp: scan.official_mrp,
+                              netWeight: scan.scanned_net_weight,
+                              locationName: scan.location_name || "Maharashtra Metro Zone",
+                              violations: scan.fraud_type ? [scan.fraud_type] : [],
+                              evidencePhotoUrl: scan.image_path ? `/api/report/${scan.image_path.replace(/^\/?static\//, "")}` : null,
+                              inspectedBy: scan.inspected_by || "Flying Squad #04"
+                            });
+                            const link = document.createElement("a");
+                            link.href = pdfDataUri;
+                            link.download = `VidhiScan_Inspection_Report_Case_${scan.id}.pdf`;
+                            link.click();
+                          }
+                        }}
+                        className="btn btn--secondary h-8 px-3 rounded-control text-xs font-semibold border border-border/60 flex items-center gap-1 hover:border-ink-900"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-tile-indigo-fg" />
+                        <span>Report PDF</span>
+                      </button>
 
                       {/* GPS Navigation */}
                       <button

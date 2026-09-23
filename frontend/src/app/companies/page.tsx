@@ -74,6 +74,7 @@ export default function CompaniesDirectoryPage() {
   const [ecomBrand, setEcomBrand] = useState<"amul" | "hul" | "kalyan">("amul");
   const [ecomData, setEcomData] = useState<any>(null);
   const [loadingEcom, setLoadingEcom] = useState(false);
+  const [showRawJson, setShowRawJson] = useState(false);
 
   useEffect(() => {
     setLoadingEcom(true);
@@ -706,43 +707,197 @@ export default function CompaniesDirectoryPage() {
                 </div>
               </div>
 
-              {/* Right Column: Live API Gateway Inspector */}
+              {/* Right Column: Live Regulatory Verification Inspector */}
               <div className="lg:col-span-6 space-y-3">
                 <div className="text-xs font-mono font-semibold uppercase text-ink-500 flex items-center justify-between">
-                  <span>⚡ Quick-Commerce Backend API Response</span>
-                  <span className="text-tile-indigo-fg font-bold">JSON PAYLOAD</span>
+                  <span>⚡ Quick-Commerce Verification Protocol</span>
+                  <button
+                    onClick={() => setShowRawJson(!showRawJson)}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold transition-all"
+                  >
+                    <Code className="w-3 h-3" />
+                    <span>{showRawJson ? "Show Visual Dashboard" : "View Raw JSON Payload"}</span>
+                  </button>
                 </div>
 
-                <div className="bg-slate-950 text-slate-200 rounded-2xl p-4 border border-slate-800 shadow-lg space-y-3 font-mono text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
-                    <div className="flex items-center gap-2 text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>GET /api/companies/verify-ecom?brand={ecomBrand}</span>
+                {showRawJson ? (
+                  /* Technical JSON Payload View (Optional Toggle) */
+                  <div className="bg-slate-950 text-slate-200 rounded-2xl p-4 border border-slate-800 shadow-lg space-y-3 font-mono text-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>GET /api/companies/verify-ecom?brand={ecomBrand}</span>
+                      </div>
+                      <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-400 text-[10px]">200 OK • 38ms</span>
                     </div>
-                    <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-400 text-[10px]">200 OK • 38ms</span>
+
+                    <pre className="overflow-x-auto text-[11px] leading-relaxed max-h-[340px] text-slate-300">
+                      {loadingEcom ? (
+                        <span className="text-slate-500">Querying live Legal Metrology gateway...</span>
+                      ) : (
+                        JSON.stringify(ecomData, null, 2)
+                      )}
+                    </pre>
+
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                      <span>Target Clients: Blinkit, Zepto, Swiggy Instamart, Amazon</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(ecomData, null, 2));
+                          alert("API payload copied to clipboard!");
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 underline font-mono"
+                      >
+                        Copy JSON Payload
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  /* Visual Compliance Inspector Card (Default Premium View) */
+                  <div className="bg-surface-solid border border-border rounded-2xl p-5 shadow-lg space-y-4">
+                    {/* Header Strip */}
+                    <div className="flex items-center justify-between pb-3 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                        <span className="text-xs font-bold text-ink-900 uppercase tracking-wide">
+                          Live Gatekeeper Handshake
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono bg-surface-base border border-border px-2 py-0.5 rounded text-ink-600 font-semibold">
+                        Latency: 38ms
+                      </span>
+                    </div>
 
-                  <pre className="overflow-x-auto text-[11px] leading-relaxed max-h-[340px] text-slate-300">
-                    {loadingEcom ? (
-                      <span className="text-slate-500">Querying live Legal Metrology gateway...</span>
-                    ) : (
-                      JSON.stringify(ecomData, null, 2)
-                    )}
-                  </pre>
-
-                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Target Clients: Blinkit, Zepto, Swiggy Instamart, Amazon</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(JSON.stringify(ecomData, null, 2));
-                        alert("API payload copied to clipboard!");
-                      }}
-                      className="text-emerald-400 hover:text-emerald-300 underline font-mono"
+                    {/* Verdict Banner */}
+                    <div
+                      className={`p-4 rounded-xl border flex items-center justify-between gap-3 ${
+                        ecomData?.isDefaulter
+                          ? "bg-red-50/80 border-red-300 text-red-950"
+                          : "bg-emerald-50/80 border-emerald-300 text-emerald-950"
+                      }`}
                     >
-                      Copy JSON Payload
-                    </button>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            ecomData?.isDefaulter
+                              ? "bg-red-600 text-white"
+                              : "bg-emerald-600 text-white"
+                          }`}
+                        >
+                          {ecomData?.isDefaulter ? (
+                            <ShieldAlert className="w-5 h-5" />
+                          ) : (
+                            <ShieldCheck className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase font-mono tracking-wider opacity-75 font-semibold">
+                            Gatekeeper Verdict
+                          </div>
+                          <div className="font-bold text-sm tracking-tight">
+                            {ecomData?.isDefaulter ? "SALES_FROZEN_BY_DCA" : "APPROVED_FOR_CHECKOUT"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-[10px] font-mono opacity-75 font-medium">VidhiScore™</div>
+                        <div className="text-lg font-bold font-mono">
+                          {ecomData?.vidhiScore || 0}<span className="text-xs opacity-60">/1000</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Statutory Handshake Checklist */}
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-ink-800 uppercase tracking-wider text-[10px] font-mono">
+                        Real-Time Statutory Rule Verification Checklist
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="p-2.5 rounded-lg bg-surface-base border border-border space-y-1">
+                          <div className="text-[10px] text-ink-400 font-sans">Legal Metrology PCR 2011</div>
+                          <div className="flex items-center gap-1.5 font-bold text-ink-900">
+                            {ecomData?.certifications?.legalMetrologyPcr2011 ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            )}
+                            <span>{ecomData?.certifications?.legalMetrologyPcr2011 ? "PCR Compliant" : "Rule Violation"}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-surface-base border border-border space-y-1">
+                          <div className="text-[10px] text-ink-400 font-sans">Unit Sale Price (USP)</div>
+                          <div className="flex items-center gap-1.5 font-bold text-ink-900">
+                            {ecomData?.certifications?.unitSalePriceCompliant ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            )}
+                            <span>{ecomData?.certifications?.unitSalePriceCompliant ? "MRP Capped" : "Illegal Markup"}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-surface-base border border-border space-y-1">
+                          <div className="text-[10px] text-ink-400 font-sans">Tamper & Sticker Audit</div>
+                          <div className="flex items-center gap-1.5 font-bold text-ink-900">
+                            {ecomData?.certifications?.zeroTamperingHistory ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            )}
+                            <span>{ecomData?.certifications?.zeroTamperingHistory ? "Zero Tampering" : "Sticker Tampering"}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-surface-base border border-border space-y-1">
+                          <div className="text-[10px] text-ink-400 font-sans">Clean Inspection Streak</div>
+                          <div className="flex items-center gap-1.5 font-bold text-emerald-700">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{ecomData?.certifications?.cleanStreakDays || 0} Days Clean</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Authorized Platforms Grid */}
+                    <div className="pt-3 border-t border-border space-y-1.5">
+                      <div className="text-[10px] font-mono text-ink-400 uppercase font-semibold">
+                        Connected E-Commerce Gateways:
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                        {["Blinkit", "Zepto", "Swiggy Instamart", "Amazon India"].map((platform) => (
+                          <span
+                            key={platform}
+                            className={`px-2.5 py-1 rounded-md text-[11px] border flex items-center gap-1 ${
+                              ecomData?.cartCheckoutAllowed
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : "bg-red-50 text-red-800 border-red-200"
+                            }`}
+                          >
+                            {ecomData?.cartCheckoutAllowed ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <X className="w-3 h-3 text-red-600" />
+                            )}
+                            <span>{platform}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        onClick={() => setShowRawJson(true)}
+                        className="text-[11px] font-mono text-ink-400 hover:text-ink-700 underline flex items-center gap-1"
+                      >
+                        <Code className="w-3 h-3" />
+                        <span>Inspect Raw JSON Payload ({ecomBrand})</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="p-3.5 rounded-xl bg-surface-solid border border-border text-xs space-y-1 text-ink-500 leading-relaxed">
                   <div className="font-bold text-ink-900 flex items-center gap-1.5">
