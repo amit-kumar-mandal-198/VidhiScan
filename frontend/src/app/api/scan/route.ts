@@ -333,7 +333,14 @@ Synthesize and cross-reference information from ALL provided photos into a unifi
 - The Front panel typically declares the Brand name, Commodity denomination, and Net Quantity.
 - The Back or Side panels typically declare the Maximum Retail Price (MRP), Manufacturing / Packing Date, Expiry / Best Before date, Manufacturer / Packer registered name & address, Consumer Care redressal cell (email, phone), Country of Origin, and Barcode.
 
-CRITICAL FOR MRP: Check if the MRP box / stamp has a printed price number across ANY of the packaging faces. If the MRP field or designated box is blank, unprinted, or smeared, set "scanned_mrp": null and add "Unprinted MRP in designated statutory box" to violations. If a numerical price is printed, return it as a number (e.g. 58.0 or 150.0).
+CRITICAL FOR MRP & STICKER TAMPERING FORENSICS:
+1. Check if the MRP box / stamp has a printed price number across ANY of the packaging faces. If the MRP field or designated box is blank, unprinted, or smeared, set "scanned_mrp": null and add "Unprinted MRP in designated statutory box" to violations. If a numerical price is printed, return it as a number (e.g. 58.0 or 150.0 or 50.0).
+2. STICKER PRICE OVERWRITE DETECTION (Rule 6(2) & Section 36(2) Offence):
+   Inspect the packaging photo meticulously for any adhesive paper stickers, sticky labels, price tags, barcode sticker tags, or paper tapes pasted ON TOP OF or OVER the packaging wrapper (e.g., a green, white, or colored adhesive paper sticker with handwritten or printed price like 'MRP 50' pasted on the package).
+   If an adhesive sticker or label with a price is detected over the packaging:
+   - Set "is_sticker_mrp": true
+   - Set "sticker_details": "Adhesive paper sticker pasted over original packaging showing MRP ₹<price>"
+   - Extract the sticker price into "scanned_mrp": float (e.g. 50.0)
 
 Return ONLY valid JSON with this schema:
 {
@@ -341,6 +348,8 @@ Return ONLY valid JSON with this schema:
   "commodity": "string or null (e.g. 'Britannia Bourbon Creme Biscuits', 'Butter')",
   "net_quantity": "string or null (e.g. '5 x 100 g = 500 g' or '1 kg')",
   "scanned_mrp": float or null,
+  "is_sticker_mrp": boolean (true if MRP is on a pasted adhesive paper sticker or sticky label),
+  "sticker_details": "string or null (description of pasted price sticker if detected)",
   "mfg_date": "string or null (e.g. '02/2026' or null if unprinted/blank)",
   "exp_date": "string or null (e.g. 'Best Before 9 Months' or null if unprinted/blank)",
   "seal_referred": boolean (true if instructions say see crimp/seal area),
@@ -349,7 +358,7 @@ Return ONLY valid JSON with this schema:
   "country_of_origin": "string or null (e.g. 'India')",
   "barcode": "string or null (numerical barcode if visible on any side)",
   "raw_text": "all legible packaging text extracted from all provided images",
-  "violations": ["explicit missing mandatory declarations under Rule 6"]
+  "violations": ["explicit missing mandatory declarations or sticker tampering under Rule 6"]
 }`;
 
     const visionModels = [
@@ -490,6 +499,8 @@ Return ONLY valid JSON with this schema:
 
     let consumerCareValue = aiData.consumer_care || (hasCareInText ? "Consumer Care Support Available" : null);
 
+    const isStickerMrp = Boolean(aiData.is_sticker_mrp) || Boolean(aiData.sticker_details);
+
     const declarations: Record<string, any> = {
       rule_1_mfg_name: {
         name: "Name & Address of Manufacturer / Packer",
@@ -522,9 +533,13 @@ Return ONLY valid JSON with this schema:
       rule_5_mrp: {
         name: "Maximum Retail Price (MRP incl. of all taxes)",
         rule: "Rule 6(1)(e)",
-        status: hasMrp ? (isOvercharged ? "NON_COMPLIANT" : "COMPLIANT") : "MISSING",
-        value: hasMrp ? `₹ ${cleanScannedMrp!.toFixed(2)}` : "Unprinted / Illegible in Statutory Box",
-        details: "Retail price inclusive of all taxes clearly printed."
+        status: isStickerMrp ? "NON_COMPLIANT" : (hasMrp ? (isOvercharged ? "NON_COMPLIANT" : "COMPLIANT") : "MISSING"),
+        value: isStickerMrp
+          ? (hasMrp ? `₹ ${cleanScannedMrp!.toFixed(2)} (Illegal Sticker Overwrite)` : "Illegal Sticker Overwrite")
+          : (hasMrp ? `₹ ${cleanScannedMrp!.toFixed(2)}` : "Unprinted / Illegible in Statutory Box"),
+        details: isStickerMrp
+          ? "Rule 6(2) & Section 36(2) Offence: Adhesive paper price sticker pasted over packaging wrapper."
+          : "Retail price inclusive of all taxes clearly printed."
       },
       rule_6_expiry: {
         name: "Best Before / Expiry / Use By Date",
@@ -558,6 +573,13 @@ Return ONLY valid JSON with this schema:
 
     const violationsList: string[] = Array.isArray(aiData.violations) ? [...aiData.violations] : [];
 
+    if (isStickerMrp) {
+      const stickerViolation = `Rule 6(2) & Section 36(2) Offence: Unlawful sticker price overwrite & MRP sticker tampering detected on packaging wrapper (${aiData.sticker_details || "adhesive sticker tag pasted over package"})`;
+      if (!violationsList.includes(stickerViolation)) {
+        violationsList.unshift(stickerViolation);
+      }
+    }
+
     if (!hasMrp) {
       if (!violationsList.some((v) => v.toLowerCase().includes("mrp"))) {
         violationsList.unshift("Rule 6(1)(e) Violation: Maximum Retail Price (MRP) is blank or unprinted on packaging");
@@ -571,10 +593,68 @@ Return ONLY valid JSON with this schema:
       }
     }
 
-    // Strictly enforce compliance: MUST have printed MRP and passed at least 7 declarations
-    const isCompliant = hasMrp && !isOvercharged && passedCount >= 7;
+    // Strictly enforce compliance: MUST have printed MRP, no overcharge, no sticker tampering, and passed at least 7 declarations
+    const isCompliant = hasMrp && !isOvercharged && !isStickerMrp && passedCount >= 7;
 
     const scanId = Math.floor(1000 + Math.random() * 9000);
+
+    const masterRegistryData = isStickerMrp
+      ? {
+          registry_status: "TAMPERED_PRICE_STICKER",
+          source_type: "FORENSIC_VISION_AUDIT",
+          source_title: "Rule 6(2) & Section 36(2) Sticker Tampering Enforcement",
+          registered_brand: effectiveBrand || "Packaged Brand",
+          registered_product: aiData.commodity || offProduct?.product_name || matchedProduct?.product || "Packaged Commodity",
+          official_mrp: officialMrp || null,
+          official_net_weight: aiData.net_quantity || offProduct?.quantity || matchedProduct?.net_weight || null,
+          is_overcharged: true,
+          price_discrepancy: officialMrp && cleanScannedMrp ? Math.abs(cleanScannedMrp - officialMrp) : 0,
+          section_36_violation: true,
+          verdict_note: `Rule 6(2) & Section 36(2) Offence: Illegal sticker MRP overwrite detected. Sticking adhesive price tags over packaging is an explicit statutory offence under Legal Metrology Act.`
+        }
+      : matchedProduct
+      ? {
+          registry_status: "MATCHED_MASTER_REGISTRY",
+          source_type: "CENTRAL_MASTER_REGISTRY",
+          source_title: "Central FMCG Master Registry",
+          registered_brand: matchedProduct.brand,
+          registered_product: matchedProduct.product,
+          official_mrp: matchedProduct.official_mrp,
+          official_net_weight: matchedProduct.net_weight,
+          is_overcharged: isOvercharged,
+          price_discrepancy: priceDiscrepancy,
+          section_36_violation: isOvercharged,
+          verdict_note: isOvercharged
+            ? `Section 36(2) Overcharge: Retail price ₹${cleanScannedMrp} exceeds Official Legal Ceiling ₹${matchedProduct.official_mrp}`
+            : "Authentic Master Registry Record: Retail price matches government recorded ceiling."
+        }
+      : marketVerification
+      ? {
+          registry_status: "LIVE_MARKET_CROSS_CHECK",
+          source_type: "LIVE_ECOMMERCE_CATALOG",
+          source_title: marketVerification.verification_source || "Live E-Commerce Retail Benchmark",
+          registered_brand: effectiveBrand || "FMCG Brand",
+          registered_product: marketVerification.verified_product_name || aiData.commodity || "Packaged Commodity",
+          official_mrp: marketVerification.official_mrp || cleanScannedMrp,
+          official_net_weight: aiData.net_quantity || offProduct?.quantity || null,
+          is_overcharged: isOvercharged,
+          price_discrepancy: priceDiscrepancy,
+          section_36_violation: isOvercharged,
+          verdict_note: marketVerification.verdict_summary || (isOvercharged ? `Overcharge detected (+₹${priceDiscrepancy})` : "Authentic manufacturer packaging verified against live e-commerce retail catalog.")
+        }
+      : {
+          registry_status: "UNREGISTERED_COMMODITY",
+          source_type: "ON_PACK_AUDIT",
+          source_title: "Rule 6 Statutory Audit",
+          registered_brand: effectiveBrand || "Packaged Brand",
+          registered_product: aiData.commodity || offProduct?.product_name || "Packaged Retail Commodity",
+          official_mrp: cleanScannedMrp || null,
+          official_net_weight: aiData.net_quantity || offProduct?.quantity || null,
+          is_overcharged: false,
+          price_discrepancy: 0.0,
+          section_36_violation: false,
+          verdict_note: "Statutory on-pack declarations inspected under Rule 6. No overcharge detected."
+        };
 
     const responseData = {
       scan_id: scanId,
@@ -600,49 +680,7 @@ Return ONLY valid JSON with this schema:
           declarations: declarations,
           violations: violationsList
         },
-        master_registry: matchedProduct
-          ? {
-              registry_status: "MATCHED_MASTER_REGISTRY",
-              source_type: "CENTRAL_MASTER_REGISTRY",
-              source_title: "Central FMCG Master Registry",
-              registered_brand: matchedProduct.brand,
-              registered_product: matchedProduct.product,
-              official_mrp: matchedProduct.official_mrp,
-              official_net_weight: matchedProduct.net_weight,
-              is_overcharged: isOvercharged,
-              price_discrepancy: priceDiscrepancy,
-              section_36_violation: isOvercharged,
-              verdict_note: isOvercharged
-                ? `Section 36(2) Overcharge: Retail price ₹${cleanScannedMrp} exceeds Official Legal Ceiling ₹${matchedProduct.official_mrp}`
-                : "Authentic Master Registry Record: Retail price matches government recorded ceiling."
-            }
-          : marketVerification
-          ? {
-              registry_status: "LIVE_MARKET_CROSS_CHECK",
-              source_type: "LIVE_ECOMMERCE_CATALOG",
-              source_title: marketVerification.verification_source || "Live E-Commerce Retail Benchmark",
-              registered_brand: effectiveBrand || "FMCG Brand",
-              registered_product: marketVerification.verified_product_name || aiData.commodity || "Packaged Commodity",
-              official_mrp: marketVerification.official_mrp || cleanScannedMrp,
-              official_net_weight: aiData.net_quantity || offProduct?.quantity || null,
-              is_overcharged: isOvercharged,
-              price_discrepancy: priceDiscrepancy,
-              section_36_violation: isOvercharged,
-              verdict_note: marketVerification.verdict_summary || (isOvercharged ? `Overcharge detected (+₹${priceDiscrepancy})` : "Authentic manufacturer packaging verified against live e-commerce retail catalog.")
-            }
-          : {
-              registry_status: "UNREGISTERED_COMMODITY",
-              source_type: "ON_PACK_AUDIT",
-              source_title: "Rule 6 Statutory Audit",
-              registered_brand: effectiveBrand || "Packaged Brand",
-              registered_product: aiData.commodity || offProduct?.product_name || "Packaged Retail Commodity",
-              official_mrp: cleanScannedMrp || null,
-              official_net_weight: aiData.net_quantity || offProduct?.quantity || null,
-              is_overcharged: false,
-              price_discrepancy: 0.0,
-              section_36_violation: false,
-              verdict_note: "Statutory on-pack declarations inspected under Rule 6. No overcharge detected."
-            },
+        master_registry: masterRegistryData,
         company_profile: matchedProduct
           ? {
               company_id: matchedProduct.company_id,

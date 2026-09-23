@@ -1238,24 +1238,35 @@ export default function ManufacturerPortal() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-ink-800">
-                      <span>HTML Embed Snippet</span>
+                  <div className="p-4 bg-surface-base rounded-xl border border-border space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-ink-900 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                          <span>Embed Certified Trust Seal</span>
+                        </h4>
+                        <p className="text-[11px] text-ink-500 mt-0.5">
+                          One-click copy to embed this live VidhiScore™ seal onto your brand website, Blinkit, or Amazon product listings.
+                        </p>
+                      </div>
+
                       <button
                         onClick={copyTrustSeal}
-                        className="text-[11px] font-semibold text-ink-900 hover:text-black flex items-center gap-1"
+                        className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 shrink-0"
                       >
-                        {copiedEmbed ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedEmbed ? "Copied!" : "Copy code"}</span>
+                        {copiedEmbed ? (
+                          <>
+                            <Check className="w-4 h-4 text-white" />
+                            <span>Seal Embed Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 text-white" />
+                            <span>Copy Seal Embed Tag</span>
+                          </>
+                        )}
                       </button>
                     </div>
-                    <pre className="p-3.5 rounded-lg bg-ink-900 text-lime-400 font-mono text-[11px] overflow-x-auto">
-{`<div class="vidhiscan-trust-seal" data-brand="${selectedCompany.name}">
-  <a href="https://vidhiscan.gov.in/companies" target="_blank">
-    <img src="https://img.shields.io/badge/VidhiScore™-${selectedCompany.current_vidhiscore}%2F1000-brightgreen?style=for-the-badge" alt="VidhiScan Verified" />
-  </a>
-</div>`}
-                    </pre>
                   </div>
                 </div>
               )}

@@ -81,12 +81,22 @@ def analyze_with_gemini_vision(image_path: str):
         prompt = """You are a senior Legal Metrology (Packaged Commodities) Rules, 2011 forensic enforcement auditor.
 Analyze this product packaging photo with meticulous precision and extract the statutory declarations required under Rule 6.
 
+CRITICAL FOR MRP & STICKER TAMPERING FORENSICS (Rule 6(2) & Section 36(2)):
+1. Inspect the packaging photo for any adhesive paper stickers, sticky labels, price tags, barcode tags, or paper tapes pasted ON TOP OF or OVER the packaging wrapper (e.g. a green, white, or colored paper sticker with handwritten or printed price like 'MRP 50' pasted on top of the package wrapper).
+2. Under Legal Metrology (Packaged Commodities) Rules Rule 6(2) & Section 36(2) of the Legal Metrology Act, 2009, sticking adhesive price tags or labels over original packaging is an explicit illegal offence.
+   - If an adhesive sticker or label with price is detected:
+     Set "is_sticker_mrp": true
+     Set "sticker_details": "Adhesive paper sticker pasted over packaging wrapper showing MRP ₹<price>"
+     Set "scanned_mrp": float (extract sticker price, e.g. 50.0)
+
 Return a valid JSON object matching this schema:
 {
   "brand": "string or null (e.g. 'BRITANNIA BOURBON', 'Amul')",
   "commodity": "string or null (e.g. 'Biscuits', 'Butter')",
   "net_quantity": "string or null (extract full weight/volume, e.g. '5 N x 100 g = 500 g' or '500 g' or '1 kg')",
   "scanned_mrp": "float or null (numerical price in INR if printed; return null if the MRP box is blank, unprinted, or missing)",
+  "is_sticker_mrp": "boolean (true if price is on a pasted adhesive paper sticker or sticky label)",
+  "sticker_details": "string or null (description of pasted price tag or sticker if detected)",
   "mfg_date": "string or null (Month and Year of packing/mfg, or null if blank/unprinted)",
   "exp_date": "string or null (Best before or expiry date, or null if blank/unprinted)",
   "seal_referred": "boolean (true if text instructs consumer to see crimp/seal area for dates)",
@@ -96,7 +106,7 @@ Return a valid JSON object matching this schema:
   "barcode": "string or null (numerical 12-14 digits printed under barcode if visible)",
   "fssai_lic": "string or null (14-digit FSSAI license number)",
   "raw_text": "all legible packaging text extracted from the image",
-  "violations": ["list of explicit missing mandatory fields under Rule 6, e.g. unprinted MRP, missing date"]
+  "violations": ["list of explicit missing mandatory fields or sticker tampering under Rule 6"]
 }
 Return ONLY pure valid JSON."""
 
@@ -162,6 +172,8 @@ def compile_declarations_from_vision(vdata: dict):
     if not consumer_care_val and has_care_in_text:
         consumer_care_val = "Consumer Care Support Available"
 
+    is_sticker_mrp = bool(vdata.get("is_sticker_mrp")) or bool(vdata.get("sticker_details"))
+
     declarations = {
         "rule_1_mfg_name": {
             "name": "Name & Address of Manufacturer / Packer",
@@ -194,9 +206,9 @@ def compile_declarations_from_vision(vdata: dict):
         "rule_5_mrp": {
             "name": "Maximum Retail Price (MRP incl. of all taxes)",
             "rule": "Rule 6(1)(e)",
-            "status": "COMPLIANT" if vdata.get("scanned_mrp") is not None else "MISSING",
-            "value": f"₹ {float(vdata['scanned_mrp']):.2f}" if vdata.get("scanned_mrp") is not None else None,
-            "details": "Retail price inclusive of all taxes clearly printed."
+            "status": "NON_COMPLIANT" if is_sticker_mrp else ("COMPLIANT" if vdata.get("scanned_mrp") is not None else "MISSING"),
+            "value": f"₹ {float(vdata['scanned_mrp']):.2f} (Illegal Sticker Overwrite)" if (is_sticker_mrp and vdata.get("scanned_mrp") is not None) else (f"₹ {float(vdata['scanned_mrp']):.2f}" if vdata.get("scanned_mrp") is not None else None),
+            "details": "Rule 6(2) & Section 36(2) Offence: Adhesive price sticker pasted over packaging wrapper." if is_sticker_mrp else "Retail price inclusive of all taxes clearly printed."
         },
         "rule_6_expiry": {
             "name": "Best Before / Expiry / Use By Date",
@@ -225,13 +237,18 @@ def compile_declarations_from_vision(vdata: dict):
     total_rules = len(declarations)
     compliance_score = round((passed_count / total_rules) * 100)
 
-    violations = vdata.get("violations") or []
+    violations = list(vdata.get("violations") or [])
+    if is_sticker_mrp:
+        sticker_msg = f"Rule 6(2) & Section 36(2) Offence: Unlawful sticker price overwrite & MRP sticker tampering detected on packaging wrapper ({vdata.get('sticker_details') or 'adhesive sticker tag pasted over package'})"
+        if sticker_msg not in violations:
+            violations.insert(0, sticker_msg)
+
     if not violations:
         for key, decl in declarations.items():
             if decl["status"] == "MISSING":
                 violations.append(f"{decl['rule']} - {decl['name']}: Not found or illegible")
 
-    is_compliant = (passed_count >= 7) and (declarations["rule_5_mrp"]["status"] == "COMPLIANT")
+    is_compliant = (passed_count >= 7) and (declarations["rule_5_mrp"]["status"] == "COMPLIANT") and (not is_sticker_mrp)
 
     clean_mrp = None
     if vdata.get("scanned_mrp") is not None:
