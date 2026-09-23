@@ -5,7 +5,7 @@ import os
 import re
 import uuid
 import cv2
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from ..database import get_db
@@ -51,7 +51,8 @@ def list_scans(limit: int = 20, db: Session = Depends(get_db)):
 
 @router.post("/upload")
 async def upload_and_scan(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     inspected_by: str = Form("Public"),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
@@ -59,24 +60,45 @@ async def upload_and_scan(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint for the public or inspector to upload a product image.
-    Saves the image locally, extracts GPS coordinates, runs OCR + Rule Engine,
-    decodes barcodes, cross-checks with Government Master Registry, and updates Company VidhiScore.
+    Endpoint for the public or inspector to upload single or multiple product images (e.g. Front & Back).
+    Saves images, runs OCR + Rule Engine across all faces, cross-checks with Government Master Registry,
+    and updates Company VidhiScore.
     """
-    # 1. Save File
-    file_extension = file.filename.split('.')[-1] if '.' in file.filename else "jpg"
-    unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # 2. Run AI Engine (EasyOCR + Regex)
+    upload_list: List[UploadFile] = []
+    if files:
+        upload_list.extend(files)
+    if file:
+        upload_list.append(file)
+    if not upload_list:
+        raise HTTPException(status_code=400, detail="No image file provided.")
+
+    saved_paths: List[str] = []
+    for f in upload_list:
+        file_extension = f.filename.split('.')[-1] if '.' in f.filename else "jpg"
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(f.file, buffer)
+        saved_paths.append(file_path)
+
+    # Run AI Engine on primary face and combine with additional faces
+    primary_path = saved_paths[0]
     try:
-        ai_result = analyze_label(file_path)
+        ai_result = analyze_label(primary_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
-    
+
+    for extra_path in saved_paths[1:]:
+        try:
+            extra_ai = analyze_label(extra_path)
+            ai_result["raw_text"] = (ai_result.get("raw_text", "") + "\n" + extra_ai.get("raw_text", "")).strip()
+            for key in ["scanned_mrp", "mrp", "mfg_date", "exp_date", "manufacturer", "consumer_care", "net_weight", "barcode"]:
+                if not ai_result["verdict"].get(key) and extra_ai["verdict"].get(key):
+                    ai_result["verdict"][key] = extra_ai["verdict"][key]
+        except Exception:
+            pass
+
+    file_path = primary_path
     verdict = ai_result["verdict"]
 
     # 3. Barcode Detection

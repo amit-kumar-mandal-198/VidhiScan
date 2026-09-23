@@ -38,7 +38,12 @@ import {
   Volume2,
   VolumeX,
   Languages,
-  Gift
+  Gift,
+  Plus,
+  X,
+  Layers,
+  Eye,
+  FlipHorizontal
 } from "lucide-react";
 import VidhiBadge from "@/components/VidhiBadge";
 
@@ -110,12 +115,26 @@ function compressImage(fileOrBlob: Blob, maxWidth = 1600, maxHeight = 1600, qual
   });
 }
 
+export interface CapturedImageItem {
+  id: string;
+  previewUrl: string;
+  blobOrFile: Blob | File;
+  label: string;
+}
+
 export default function PublicPortal() {
   // Capture Mode: "live" (Webcam/Live Stream), "upload" (File Picker), or "demo" (Sample Presets)
   const [captureMode, setCaptureMode] = useState<"live" | "upload">("upload");
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImages, setCapturedImages] = useState<CapturedImageItem[]>([]);
+  const [selectedPreviewIndex, setSelectedPreviewIndex] = useState<number>(0);
+
+  const capturedImage = capturedImages.length > 0
+    ? (capturedImages[selectedPreviewIndex]?.previewUrl || capturedImages[0]?.previewUrl)
+    : null;
+
   const [isUploading, setIsUploading] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
+  const isAuditActive = Boolean(scanResult || isUploading);
   const [masterRegistry, setMasterRegistry] = useState<any>(null);
   const [scanId, setScanId] = useState<number | null>(null);
   const [rawOcrText, setRawOcrText] = useState<string>("");
@@ -139,6 +158,10 @@ export default function PublicPortal() {
 
   // Progressive disclosure tab for scan results: "price" | "audit" | "legal"
   const [resultTab, setResultTab] = useState<"price" | "audit" | "legal">("price");
+
+  // Citizen Retailer Checkout Price Overcharge Checker
+  const [customChargedPrice, setCustomChargedPrice] = useState<string>("");
+  const [customOverchargeAlert, setCustomOverchargeAlert] = useState<{ isOvercharged: boolean; diff: number } | null>(null);
 
   // Voice narration synthesizer
   const handlePlayVoiceSummary = () => {
@@ -282,7 +305,7 @@ export default function PublicPortal() {
   }, [stream]);
 
   useEffect(() => {
-    if (captureMode === "live" && !capturedImage) {
+    if (captureMode === "live" && !isAuditActive) {
       startLiveCamera();
     } else {
       stopLiveCamera();
@@ -290,7 +313,7 @@ export default function PublicPortal() {
     return () => {
       stopLiveCamera();
     };
-  }, [captureMode, capturedImage, startLiveCamera, stopLiveCamera]);
+  }, [captureMode, isAuditActive, startLiveCamera, stopLiveCamera]);
 
   const compressImage = async (blobOrFile: Blob, maxWidth = 1280, quality = 0.85): Promise<Blob> => {
     return new Promise((resolve) => {
@@ -331,6 +354,39 @@ export default function PublicPortal() {
     });
   };
 
+  const getNextLabel = (index: number) => {
+    if (index === 0) return "Front Face (PDP / Net Wt)";
+    if (index === 1) return "Back Panel (Declarations & MRP)";
+    if (index === 2) return "Side / Crimp / Seal";
+    return `Packaging Face ${index + 1}`;
+  };
+
+  const addCapturedFiles = (files: FileList | File[]) => {
+    const fileArr = Array.from(files);
+    if (fileArr.length === 0) return;
+    const startIndex = capturedImages.length;
+    const newItems: CapturedImageItem[] = fileArr.map((file, idx) => ({
+      id: `${Date.now()}-${startIndex + idx}-${Math.random().toString(36).substring(2, 6)}`,
+      previewUrl: URL.createObjectURL(file),
+      blobOrFile: file,
+      label: getNextLabel(startIndex + idx),
+    }));
+    setCapturedImages((prev) => [...prev, ...newItems]);
+    setSelectedPreviewIndex(startIndex);
+  };
+
+  const handleRemoveImage = (idToRemove: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCapturedImages((prev) => {
+      const filtered = prev.filter((img) => img.id !== idToRemove);
+      return filtered.map((item, idx) => ({
+        ...item,
+        label: getNextLabel(idx),
+      }));
+    });
+    setSelectedPreviewIndex((prev) => Math.max(0, prev - 1));
+  };
+
   const captureFromVideo = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -344,9 +400,14 @@ export default function PublicPortal() {
           (blob) => {
             if (blob) {
               const previewUrl = URL.createObjectURL(blob);
-              setCapturedImage(previewUrl);
-              stopLiveCamera();
-              sendToAI(blob);
+              const newItem: CapturedImageItem = {
+                id: `${Date.now()}-${capturedImages.length}-${Math.random().toString(36).substring(2, 6)}`,
+                previewUrl,
+                blobOrFile: blob,
+                label: getNextLabel(capturedImages.length),
+              };
+              setCapturedImages((prev) => [...prev, newItem]);
+              setSelectedPreviewIndex(capturedImages.length);
             }
           },
           "image/jpeg",
@@ -372,11 +433,9 @@ export default function PublicPortal() {
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const previewUrl = URL.createObjectURL(file);
-      setCapturedImage(previewUrl);
-      resetScanState();
-      sendToAI(file);
+      addCapturedFiles(e.target.files);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
     }
   };
 
@@ -390,22 +449,36 @@ export default function PublicPortal() {
     setCompanyProfile(null);
   };
 
-  const sendToAI = async (fileOrBlob: Blob) => {
+  const sendToAI = async (itemsToUpload?: CapturedImageItem[]) => {
+    const imagesToProcess = itemsToUpload || capturedImages;
+    if (!imagesToProcess || imagesToProcess.length === 0) return;
+
     setIsUploading(true);
     setErrorMsg(null);
 
     try {
-      // Compress image client-side to prevent memory overload & upload timeouts on mobile
-      let blobToUpload = fileOrBlob;
-      try {
-        blobToUpload = await compressImage(fileOrBlob);
-      } catch (e) {
-        console.warn("Client compression skipped:", e);
+      // Compress each image client-side to prevent memory overload & upload timeouts
+      const compressedBlobs: { blob: Blob; label: string }[] = [];
+      for (let i = 0; i < imagesToProcess.length; i++) {
+        const item = imagesToProcess[i];
+        let blobToUpload = item.blobOrFile;
+        try {
+          blobToUpload = await compressImage(item.blobOrFile);
+        } catch (e) {
+          console.warn("Client compression skipped for item", i, e);
+        }
+        compressedBlobs.push({ blob: blobToUpload, label: item.label });
       }
 
       const gps = await getGpsLocation();
       const formData = new FormData();
-      formData.append("file", blobToUpload, "citizen_scan.jpg");
+
+      // Append each image as "files" and "file" for multi-angle synthesis
+      compressedBlobs.forEach((c, index) => {
+        formData.append("files", c.blob, `panel_${index + 1}.jpg`);
+        formData.append("file", c.blob, `panel_${index + 1}.jpg`);
+      });
+
       if (gps.lat && gps.lng) {
         formData.append("latitude", String(gps.lat));
         formData.append("longitude", String(gps.lng));
@@ -502,58 +575,142 @@ export default function PublicPortal() {
     }
   };
 
-  const triggerSampleTest = (type: "butter" | "surf" | "oil") => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 600;
-    canvas.height = 400;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  const drawSampleFace = (title: string, lines: { label: string; val: string }[], bgHeader: string): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 600;
+      canvas.height = 420;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 600, 400);
+      // Card Background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 600, 420);
 
-    ctx.fillStyle = "#1a1a33";
-    ctx.font = "bold 24px sans-serif";
+      // Card Header Banner
+      ctx.fillStyle = bgHeader;
+      ctx.fillRect(0, 0, 600, 80);
+
+      // Header Text
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 22px system-ui, sans-serif";
+      ctx.fillText(title, 24, 48);
+
+      // Content Lines
+      let y = 125;
+      lines.forEach(({ label, val }) => {
+        ctx.fillStyle = "#64748b";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillText(label.toUpperCase(), 24, y);
+
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "15px monospace, sans-serif";
+        ctx.fillText(val, 24, y + 22);
+
+        y += 52;
+      });
+
+      // Bottom statutory watermark
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillText("VidhiScan Multimodal Verification Sensor • Legal Metrology (PCR) 2011", 24, 395);
+
+      canvas.toBlob((b) => resolve(b || new Blob()), "image/jpeg", 0.95);
+    });
+  };
+
+  const triggerSampleTest = async (type: "butter" | "surf" | "oil") => {
+    resetScanState();
+    setIsUploading(true);
+
+    let frontBlob: Blob;
+    let backBlob: Blob;
 
     if (type === "butter") {
-      ctx.fillText("AMUL PASTEURISED BUTTER", 40, 50);
-      ctx.font = "16px sans-serif";
-      ctx.fillText("Mfd by: GCMMF Ltd., Anand 388001, Gujarat", 40, 90);
-      ctx.fillText("Net Quantity: 100 g", 40, 130);
-      ctx.fillText("MRP: Rs. 58.00 (Inclusive of all taxes)", 40, 170);
-      ctx.fillText("USP: Rs. 0.58 per g", 40, 205);
-      ctx.fillText("Mfg Date: 02/2026", 40, 240);
-      ctx.fillText("Best Before 9 Months from Manufacture", 40, 275);
-      ctx.fillText("Country of Origin: India", 40, 310);
-      ctx.fillText("Consumer Care: 1800-258-3333 | gcmmf@amul.coop", 40, 345);
+      frontBlob = await drawSampleFace(
+        "AMUL PASTEURISED BUTTER",
+        [
+          { label: "Commodity", val: "Pasteurised Butter (Food Product)" },
+          { label: "Net Quantity (Rule 6(1)(b))", val: "100 g (SI Metric Compliant)" },
+          { label: "Brand Identity", val: "Amul - The Taste of India" },
+          { label: "Storage Condition", val: "Keep Refrigerated at 4°C" }
+        ],
+        "#0284c7"
+      );
+      backBlob = await drawSampleFace(
+        "STATUTORY DECLARATIONS & MRP (BACK)",
+        [
+          { label: "Maximum Retail Price (Rule 6(1)(e))", val: "Rs. 58.00 (USP Rs. 0.58/g incl. of all taxes)" },
+          { label: "Month & Year of Packing", val: "02/2026 | Best Before 9 Months" },
+          { label: "Manufacturer / Packer (Rule 6(1)(a))", val: "GCMMF Ltd., Anand 388001, Gujarat" },
+          { label: "Consumer Care & Barcode", val: "1800-258-3333 | gcmmf@amul.coop | 8901262150114" }
+        ],
+        "#0f766e"
+      );
     } else if (type === "surf") {
-      ctx.fillText("SURF EXCEL EASY WASH", 40, 50);
-      ctx.font = "16px sans-serif";
-      ctx.fillText("Mfd by: Hindustan Unilever Ltd, Mumbai", 40, 90);
-      ctx.fillText("Net Weight: 1 kg", 40, 130);
-      ctx.fillText("MRP: Rs. 519.00 (Inclusive of all taxes)", 40, 170);
-      ctx.fillText("Mfg Date: 01/2026", 40, 210);
-      ctx.fillText("Country of Origin: India", 40, 250);
-      ctx.fillText("Customer Care: care@hul.com", 40, 290);
+      frontBlob = await drawSampleFace(
+        "SURF EXCEL EASY WASH",
+        [
+          { label: "Commodity", val: "Detergent Washing Powder" },
+          { label: "Net Weight", val: "1 kg" },
+          { label: "Brand Identity", val: "Surf Excel (Hindustan Unilever Ltd)" },
+          { label: "Key Feature", val: "Super Fast Stain Removal Formula" }
+        ],
+        "#e11d48"
+      );
+      backBlob = await drawSampleFace(
+        "DECLARATIONS & PRICING VIOLATION (BACK)",
+        [
+          { label: "Official Manufacturer Legal MRP", val: "Rs. 469.00 (Inclusive of all taxes)" },
+          { label: "Sticker Price Overwrite", val: "Rs. 519.00 (Illegal Markup +Rs. 50.00 Extortion)" },
+          { label: "Mfg Date & Batch", val: "01/2026 | Batch HUL-MUM-991" },
+          { label: "Consumer Redressal", val: "care@hul.com | Toll Free 1800-10-22-221" }
+        ],
+        "#b91c1c"
+      );
     } else {
-      ctx.fillText("FORTUNE SUNLITE REFINED OIL", 40, 50);
-      ctx.font = "16px sans-serif";
-      ctx.fillText("Packed by: Adani Wilmar Ltd, Ahmedabad", 40, 90);
-      ctx.fillText("Net Volume: 1 L", 40, 130);
-      ctx.fillText("MRP: Rs. 165.00 (Incl. of all taxes)", 40, 170);
-      ctx.fillText("Mfg Date & Expiry: See seal / neck area", 40, 210);
-      ctx.fillText("Country of Origin: India", 40, 250);
-      ctx.fillText("Care: customercare@adaniwilmar.in", 40, 290);
+      frontBlob = await drawSampleFace(
+        "FORTUNE SUNLITE REFINED OIL",
+        [
+          { label: "Commodity", val: "Refined Sunflower Cooking Oil" },
+          { label: "Net Volume", val: "1 L" },
+          { label: "Brand Identity", val: "Fortune (Adani Wilmar Ltd)" },
+          { label: "Nutritional Fortification", val: "Enriched with Vitamins A & D" }
+        ],
+        "#d97706"
+      );
+      backBlob = await drawSampleFace(
+        "STATUTORY INFORMATION & PROVISO (BACK)",
+        [
+          { label: "Maximum Retail Price", val: "Rs. 165.00 (Inclusive of all taxes)" },
+          { label: "Mfg Date & Expiry (Rule 6 Proviso)", val: "Referred to Crown Neck / Seal Area" },
+          { label: "Packer Premises", val: "Adani Wilmar Ltd, Fortune House, Ahmedabad 380009" },
+          { label: "Consumer Support", val: "customercare@adaniwilmar.in | 1800-233-9999" }
+        ],
+        "#b45309"
+      );
     }
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const previewUrl = URL.createObjectURL(blob);
-        setCapturedImage(previewUrl);
-        resetScanState();
-        setIsUploading(true);
+    const frontUrl = URL.createObjectURL(frontBlob);
+    const backUrl = URL.createObjectURL(backBlob);
 
-        setTimeout(() => {
+    setCapturedImages([
+      {
+        id: `sample-front-${Date.now()}`,
+        previewUrl: frontUrl,
+        blobOrFile: frontBlob,
+        label: "Front Face (PDP / Net Wt)"
+      },
+      {
+        id: `sample-back-${Date.now()}`,
+        previewUrl: backUrl,
+        blobOrFile: backBlob,
+        label: "Back Panel (Declarations & MRP)"
+      }
+    ]);
+    setSelectedPreviewIndex(0);
+
+    setTimeout(() => {
           setIsUploading(false);
           if (type === "butter") {
             const verdict = {
@@ -733,8 +890,6 @@ export default function PublicPortal() {
             });
           }
         }, 400);
-      }
-    }, "image/jpeg", 0.95);
   };
 
   const generateNotice = async () => {
@@ -756,7 +911,13 @@ export default function PublicPortal() {
   };
 
   const resetScan = () => {
-    setCapturedImage(null);
+    capturedImages.forEach((img) => {
+      try {
+        URL.revokeObjectURL(img.previewUrl);
+      } catch (e) {}
+    });
+    setCapturedImages([]);
+    setSelectedPreviewIndex(0);
     resetScanState();
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (galleryInputRef.current) galleryInputRef.current.value = "";
@@ -931,8 +1092,8 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
       {/* 3. MAIN SCANNER CONTAINER */}
       <div className="rounded-canvas bg-white/80 backdrop-blur-xl border border-border p-5 md:p-8 shadow-soft relative space-y-5">
         
-        {/* View 1: Camera Scanner & Mode Switcher */}
-        {!capturedImage && (
+        {/* View 1: Camera Scanner & Mode Switcher (Active when not auditing) */}
+        {!isAuditActive && (
           <div className="space-y-6">
             
             {/* Mode Switcher Buttons */}
@@ -980,8 +1141,12 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       <div className="w-4 h-4 border-t-2 border-l-2 border-lime-400" />
                       <div className="w-4 h-4 border-t-2 border-r-2 border-lime-400" />
                     </div>
-                    <div className="text-center font-mono text-[10px] text-white/90 bg-black/50 px-2 py-0.5 rounded-chip backdrop-blur-sm self-center">
-                      Align mandatory declarations & MRP in frame
+                    <div className="text-center font-mono text-[10px] text-white/90 bg-black/60 px-2.5 py-1 rounded-chip backdrop-blur-sm self-center">
+                      {capturedImages.length === 0
+                        ? "Align Front Face (Brand & Net Weight)"
+                        : capturedImages.length === 1
+                        ? "Now flip & align Back Panel (MRP, Dates, Address)"
+                        : `Align Packaging Face ${capturedImages.length + 1}`}
                     </div>
                     <div className="flex justify-between">
                       <div className="w-4 h-4 border-b-2 border-l-2 border-lime-400" />
@@ -1003,67 +1168,220 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                   )}
                 </div>
 
-                {/* Shutter Trigger Button */}
-                <div className="flex items-center justify-center gap-3">
+                {/* Live Mode Staging Strip */}
+                {capturedImages.length > 0 && (
+                  <div className="flex items-center gap-2 overflow-x-auto p-2 bg-surface-tint rounded-control border border-border">
+                    <span className="text-[10px] font-mono text-ink-500 font-semibold px-1 shrink-0">Captured:</span>
+                    {capturedImages.map((img, idx) => (
+                      <div key={img.id} className="relative shrink-0 flex items-center gap-1.5 bg-surface-solid border border-border rounded-chip px-2 py-1 text-[10px] font-mono shadow-xs">
+                        <img src={img.previewUrl} alt={img.label} className="w-5 h-5 rounded object-cover" />
+                        <span className="text-ink-900 font-semibold">{idx + 1}. {idx === 0 ? "Front Face" : idx === 1 ? "Back Panel" : `Side ${idx + 1}`}</span>
+                        <button
+                          onClick={(e) => handleRemoveImage(img.id, e)}
+                          className="text-ink-400 hover:text-tile-peach-fg p-0.5 rounded"
+                          title="Remove snapshot"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Shutter Trigger Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
                   <button
                     onClick={captureFromVideo}
-                    className="btn btn--primary h-12 px-6 rounded-control text-xs font-semibold shadow-xs flex items-center gap-2"
+                    className="btn btn--secondary h-11 px-5 rounded-control text-xs font-semibold shadow-xs flex items-center gap-2 w-full sm:w-auto justify-center"
                   >
-                    <div className="w-3 h-3 rounded-full bg-ink-900 animate-pulse" />
-                    <span>Capture & Run Forensic Audit</span>
+                    <Camera className="w-4 h-4 text-ink-900" />
+                    <span>
+                      {capturedImages.length === 0
+                        ? "Capture Front Face (PDP)"
+                        : capturedImages.length === 1
+                        ? "Capture Back Panel (MRP & Dates)"
+                        : `Capture Face ${capturedImages.length + 1}`}
+                    </span>
                   </button>
+
+                  {capturedImages.length > 0 && (
+                    <button
+                      onClick={() => sendToAI()}
+                      className="btn btn--primary h-11 px-5 rounded-control text-xs font-semibold shadow-xs flex items-center gap-2 w-full sm:w-auto justify-center"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-ink-900" />
+                      <span>Run Forensic Audit ({capturedImages.length} Face{capturedImages.length > 1 ? "s" : ""})</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* PHOTO UPLOAD DROPZONE */}
+            {/* PHOTO UPLOAD VIEWPORT */}
             {captureMode === "upload" && (
-              <div className="text-center py-6 space-y-6">
-                {/* Target Reticle Viewport HUD */}
-                <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-ink-900 rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-ink-900 rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-ink-900 rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-ink-900 rounded-br-lg" />
+              <div className="py-2 space-y-5">
+                {/* Case A: No photos uploaded yet -> Show Dropzone & File Pickers */}
+                {capturedImages.length === 0 && (
+                  <div className="text-center py-6 space-y-6">
+                    {/* Target Reticle Viewport HUD */}
+                    <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-ink-900 rounded-tl-lg" />
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-ink-900 rounded-tr-lg" />
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-ink-900 rounded-bl-lg" />
+                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-ink-900 rounded-br-lg" />
 
-                  <div className="w-24 h-24 bg-surface-tint/70 rounded-panel flex items-center justify-center border border-border animate-radar">
-                    <Camera className="w-8 h-8 text-ink-900" />
+                      <div className="w-24 h-24 bg-surface-tint/70 rounded-panel flex items-center justify-center border border-border animate-radar">
+                        <Camera className="w-8 h-8 text-ink-900" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5 max-w-sm mx-auto">
+                      <label className="btn btn--primary w-full h-11 justify-center shadow-xs cursor-pointer font-semibold text-xs">
+                        <Camera className="w-4 h-4 text-ink-900" />
+                        <span>Select Package Photo(s)</span>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleFileSelected}
+                        />
+                      </label>
+
+                      <label className="btn btn--ghost w-full h-10 justify-center border border-border/60 shadow-xs cursor-pointer font-semibold text-xs">
+                        <UploadCloud className="w-4 h-4 text-ink-900" />
+                        <span>Browse Gallery / Downloads</span>
+                        <input
+                          ref={galleryInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileSelected}
+                        />
+                      </label>
+
+                      <p className="text-[11px] text-ink-500 font-mono text-center pt-1">
+                        💡 Tip: Select both Front & Back photos at once for 100% legal audit accuracy.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-2.5 max-w-sm mx-auto">
-                  <label className="btn btn--primary w-full h-11 justify-center shadow-xs cursor-pointer font-semibold text-xs">
-                    <Camera className="w-4 h-4 text-ink-900" />
-                    <span>Select Package Photo</span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handleFileSelected}
-                    />
-                  </label>
+                {/* Case B: 1 or more photos uploaded -> Multi-Angle Packaging Staging Tray */}
+                {capturedImages.length > 0 && (
+                  <div className="space-y-4 max-w-xl mx-auto">
+                    <div className="p-3.5 bg-surface-tint rounded-control border border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-surface-solid border border-border flex items-center justify-center shrink-0">
+                          <Layers className="w-4 h-4 text-ink-900" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-ink-900 flex items-center gap-1.5">
+                            <span>Packaging Staging Tray</span>
+                            <span className="text-[10px] bg-ink-900 text-white px-2 py-0.5 rounded-chip font-mono font-normal">
+                              {capturedImages.length} Panel{capturedImages.length > 1 ? "s" : ""} Staged
+                            </span>
+                          </h4>
+                          <p className="text-[10px] text-ink-500 font-mono mt-0.5">
+                            Front side verifies Brand & Net Weight. Back side verifies MRP, Dates & Manufacturer.
+                          </p>
+                        </div>
+                      </div>
 
-                  <label className="btn btn--ghost w-full h-10 justify-center border border-border/60 shadow-xs cursor-pointer font-semibold text-xs">
-                    <UploadCloud className="w-4 h-4 text-ink-900" />
-                    <span>Browse Gallery / Downloads</span>
-                    <input
-                      ref={galleryInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileSelected}
-                    />
-                  </label>
-                </div>
+                      <button
+                        onClick={resetScan}
+                        className="text-[10px] font-mono text-ink-500 hover:text-tile-peach-fg flex items-center gap-1 px-2 py-1 rounded hover:bg-tile-peach-bg/50 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Clear All</span>
+                      </button>
+                    </div>
+
+                    {/* Staging Thumbnails Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {capturedImages.map((img, idx) => (
+                        <div
+                          key={img.id}
+                          className="relative rounded-card overflow-hidden border border-border bg-white shadow-soft group"
+                        >
+                          <div className="aspect-[4/3] bg-surface-tint/30 flex items-center justify-center overflow-hidden">
+                            <img
+                              src={img.previewUrl}
+                              alt={img.label}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                          </div>
+
+                          <div className="p-2 border-t border-border bg-surface-solid flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-semibold text-ink-900 truncate pr-1">
+                              {idx + 1}. {img.label.split("(")[0].trim()}
+                            </span>
+                            <button
+                              onClick={(e) => handleRemoveImage(img.id, e)}
+                              className="p-1 rounded text-ink-400 hover:text-tile-peach-fg hover:bg-tile-peach-bg/50"
+                              title="Remove panel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add Another Side Dropzone Card */}
+                      {capturedImages.length < 4 && (
+                        <label className="border-2 border-dashed border-border hover:border-ink-900 rounded-card aspect-[4/3] flex flex-col items-center justify-center p-3 text-center cursor-pointer transition-colors bg-surface-tint/20 hover:bg-surface-tint/40 group">
+                          <Plus className="w-5 h-5 text-ink-500 group-hover:text-ink-900 transition-colors mb-1" />
+                          <span className="text-xs font-semibold text-ink-900">
+                            {capturedImages.length === 1 ? "+ Add Back Side" : "+ Add Another Face"}
+                          </span>
+                          <span className="text-[10px] font-mono text-ink-500 mt-0.5">
+                            {capturedImages.length === 1 ? "MRP & Declarations" : "Seal / Crimp"}
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileSelected}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Forensic Audit Trigger CTA */}
+                    <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                      <button
+                        onClick={() => sendToAI()}
+                        className="btn btn--primary flex-1 h-12 justify-center shadow-xs font-semibold text-xs flex items-center gap-2"
+                      >
+                        <Sparkles className="w-4 h-4 text-ink-900" />
+                        <span>Run Forensic Audit ({capturedImages.length} Packaging Face{capturedImages.length > 1 ? "s" : ""})</span>
+                      </button>
+
+                      <label className="btn btn--ghost h-12 justify-center border border-border/70 shadow-xs cursor-pointer font-semibold text-xs px-4 flex items-center gap-1.5">
+                        <UploadCloud className="w-4 h-4 text-ink-900" />
+                        <span>Add Photos</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileSelected}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Quick Demo Test Presets */}
             <div className="pt-2 border-t border-border/80">
               <p className="text-[11px] font-mono uppercase tracking-wider text-ink-500 font-semibold mb-2.5 text-center">
-                Instant Forensic Test Samples (Click to Simulate)
+                Instant Forensic Test Samples (Simulates Dual-Panel Front + Back Capture)
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-md mx-auto">
                 <button
@@ -1076,7 +1394,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       Pass
                     </span>
                   </div>
-                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Compliant Rule 6</p>
+                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Dual-Panel Compliant</p>
                 </button>
 
                 <button
@@ -1089,7 +1407,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       Fraud
                     </span>
                   </div>
-                  <p className="text-[10px] text-tile-peach-fg font-mono mt-0.5">+₹50 Sticker Overcharge</p>
+                  <p className="text-[10px] text-tile-peach-fg font-mono mt-0.5">Dual-Panel Overcharge</p>
                 </button>
 
                 <button
@@ -1102,7 +1420,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                       Proviso
                     </span>
                   </div>
-                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Crown Seal Proviso</p>
+                  <p className="text-[10px] text-ink-500 font-mono mt-0.5">Dual-Panel Proviso</p>
                 </button>
               </div>
             </div>
@@ -1110,12 +1428,46 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
         )}
 
         {/* View 2: Scanned Preview & Live Audit Analysis */}
-        {capturedImage && (
+        {isAuditActive && (
           <div className="space-y-5">
+            {/* Multi-Panel Angle Selector Bar */}
+            {capturedImages.length > 1 && (
+              <div className="p-3 bg-surface-tint rounded-control border border-border space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-ink-700 font-semibold flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-ink-900" />
+                    <span>Multi-Angle Inspection ({capturedImages.length} Panels Cross-Referenced):</span>
+                  </span>
+                  <span className="text-[10px] bg-tile-indigo-bg text-tile-indigo-fg px-2 py-0.5 rounded-chip font-semibold flex items-center gap-1 shadow-xs">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Dual-Panel AI Synthesis</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {capturedImages.map((img, idx) => (
+                    <button
+                      key={img.id}
+                      onClick={() => setSelectedPreviewIndex(idx)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-control text-xs font-mono transition-all border shrink-0 ${
+                        selectedPreviewIndex === idx
+                          ? "bg-surface-solid border-ink-900 text-ink-900 font-semibold shadow-xs"
+                          : "bg-white/60 border-border text-ink-500 hover:text-ink-900"
+                      }`}
+                    >
+                      <img src={img.previewUrl} alt={img.label} className="w-4 h-4 rounded object-cover" />
+                      <span>{idx + 1}: {img.label.split("(")[0].trim()}</span>
+                      {selectedPreviewIndex === idx && <Eye className="w-3 h-3 text-ink-900 ml-0.5" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Scanned Image Preview */}
             <div className="relative rounded-card overflow-hidden border border-border bg-white max-w-sm mx-auto shadow-soft">
               <img
-                src={capturedImage}
+                src={capturedImage || ""}
                 alt="Product packaging sample"
                 className="w-full h-auto max-h-64 object-contain mx-auto"
               />
@@ -1124,7 +1476,10 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
 
               <div className="absolute bottom-2.5 left-2.5 bg-surface-solid/90 backdrop-blur-md text-ink-900 border border-border text-[10px] px-2.5 py-1 rounded-control font-mono font-semibold flex items-center space-x-1.5 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-lime-600 animate-pulse" />
-                <span>{scanId ? `Case #${scanId}` : "Sensor Image Captured"}</span>
+                <span>
+                  {scanId ? `Case #${scanId}` : "Sensor Image Captured"}
+                  {capturedImages[selectedPreviewIndex]?.label && ` • ${capturedImages[selectedPreviewIndex].label.split("(")[0].trim()}`}
+                </span>
               </div>
             </div>
 
@@ -1134,10 +1489,14 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                 <div className="w-8 h-8 border-3 border-ink-400/30 border-t-ink-900 rounded-full animate-spin mx-auto" />
                 <div>
                   <p className="text-ink-900 font-semibold text-xs tracking-wide">
-                    Auditing 8 statutory declarations & matching government price registry...
+                    {capturedImages.length > 1
+                      ? `Synthesizing ${capturedImages.length} packaging panels & verifying Legal Metrology PCR compliance...`
+                      : "Auditing 8 statutory declarations & matching government price registry..."}
                   </p>
                   <p className="text-[11px] text-ink-500 mt-0.5">
-                    Extracting manufacturer, dates, metric quantity, and Unit Sale Price (USP)
+                    {capturedImages.length > 1
+                      ? "Cross-referencing Front Face (Net Wt / Identity) with Back Panel (MRP, Dates, Address & Helpline)"
+                      : "Extracting manufacturer, dates, metric quantity, and Unit Sale Price (USP)"}
                   </p>
                 </div>
               </div>
@@ -1304,6 +1663,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                 {resultTab === "price" && (
                   <div className="space-y-4 animate-in fade-in duration-150">
                     {/* Central Registry Price Comparison & Overcharge Card */}
+                    {/* Dynamic Price Comparison & Real-Time Market Cross-Check Card */}
                     {masterRegistry && (
                       <div
                         className={`p-4 rounded-card border text-xs space-y-3 shadow-soft font-mono ${
@@ -1321,16 +1681,18 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                             ) : (
                               <Award className="w-4 h-4 text-tile-mint-fg" />
                             )}
-                            <span>Central FMCG Master Registry Price Check</span>
+                            <span>{masterRegistry.source_title || "Price Verification & Market Cross-Check"}</span>
                           </span>
                           <span className="font-mono text-[10px] bg-surface-solid px-2.5 py-0.5 rounded-chip border border-border font-semibold text-ink-900">
-                            {masterRegistry.registered_brand || "FMCG Database"}
+                            {masterRegistry.registered_brand || "FMCG Catalog"}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
                           <div className="p-2.5 bg-white/80 rounded-control border border-border">
-                            <span className="text-ink-500 text-[10px] block">Official Approved MRP:</span>
+                            <span className="text-ink-500 text-[10px] block">
+                              {masterRegistry.source_type === "CENTRAL_MASTER_REGISTRY" ? "Official Approved MRP:" : "Catalog Verified MRP:"}
+                            </span>
                             <span className="font-semibold text-ink-900 text-sm">
                               {masterRegistry.official_mrp && masterRegistry.official_mrp > 0 ? (
                                 `₹ ${formatCurrency(masterRegistry.official_mrp)}`
@@ -1340,7 +1702,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                             </span>
                           </div>
                           <div className="p-2.5 bg-white/80 rounded-control border border-border">
-                            <span className="text-ink-500 text-[10px] block">Detected Shelf Price:</span>
+                            <span className="text-ink-500 text-[10px] block">Packaging Scanned MRP:</span>
                             {scanResult.scanned_mrp && scanResult.scanned_mrp > 0 ? (
                               <span className={`font-semibold text-sm ${masterRegistry.is_overcharged ? "text-tile-peach-fg font-bold" : "text-ink-900"}`}>
                                 ₹ {formatCurrency(scanResult.scanned_mrp)}
@@ -1366,7 +1728,7 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                               </span>
                             </div>
                             <p className="text-ink-500 text-[11px] leading-relaxed">
-                              Retailer is charging above the government legal ceiling. Under the Consumer Protection Act, 2019, you are entitled to a full refund of this surcharge plus statutory compensation.
+                              {masterRegistry.verdict_note || "Retailer is charging above the legal ceiling. Under the Consumer Protection Act, 2019, you are entitled to a full refund of this surcharge plus statutory compensation."}
                             </p>
 
                             <button
@@ -1389,11 +1751,61 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                             </p>
                           </div>
                         ) : (
-                          <p className="text-tile-mint-fg font-medium text-xs flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Price verified clean: retailer is charging within statutory manufacturer limits.</span>
-                          </p>
+                          <div className="p-2.5 rounded-control bg-emerald-50/80 border border-emerald-200 text-emerald-900 text-xs space-y-1">
+                            <p className="text-tile-mint-fg font-semibold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Authentic Factory Pricing: No Overcharge Detected</span>
+                            </p>
+                            <p className="text-[11px] text-emerald-700 leading-relaxed font-sans">
+                              {masterRegistry.verdict_note || "Package price matches authentic manufacturer pricing benchmarks. Packaged declarations comply with Legal Metrology ceiling."}
+                            </p>
+                          </div>
                         )}
+
+                        {/* Citizen Shopkeeper Checkout Overcharge Checker */}
+                        <div className="p-3 bg-surface-solid rounded-control border border-border space-y-2 mt-2 font-sans">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-ink-900 flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-ink-700" />
+                              Did the shopkeeper charge more at checkout?
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 text-xs font-bold">₹</span>
+                              <input
+                                type="number"
+                                placeholder={`Enter amount paid (e.g. ${scanResult.scanned_mrp ? Math.round(scanResult.scanned_mrp + 20) : "400"})`}
+                                value={customChargedPrice}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  setCustomChargedPrice(e.target.value);
+                                  const baseline = scanResult.scanned_mrp || masterRegistry.official_mrp;
+                                  if (!isNaN(val) && baseline && val > baseline) {
+                                    setCustomOverchargeAlert({ isOvercharged: true, diff: Math.round((val - baseline) * 100) / 100 });
+                                  } else {
+                                    setCustomOverchargeAlert(null);
+                                  }
+                                }}
+                                className="w-full pl-6 pr-3 py-1.5 text-xs rounded-control border border-border bg-white text-ink-900 focus:outline-none focus:border-ink-900 font-mono"
+                              />
+                            </div>
+                            {customOverchargeAlert?.isOvercharged && (
+                              <button
+                                onClick={() => setShowComplaintModal(true)}
+                                className="btn btn--danger px-3 py-1.5 text-xs font-semibold shrink-0 flex items-center gap-1"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Report +₹{customOverchargeAlert.diff} Overcharge</span>
+                              </button>
+                            )}
+                          </div>
+                          {customOverchargeAlert?.isOvercharged && (
+                            <p className="text-[11px] text-red-600 font-medium">
+                              ⚠️ Charging ₹{customChargedPrice} for an item with printed MRP ₹{formatCurrency(scanResult.scanned_mrp || masterRegistry.official_mrp)} is a punishable offence under Section 36(2) of the Legal Metrology Act, 2009.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1645,12 +2057,23 @@ Verified by VidhiScan AI Neural Engine (Statutory Exif & GPS Authenticated).`;
                 )}
 
                 {/* Persistent Bottom Action */}
-                <div className="pt-2 border-t border-border/80">
+                <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    onClick={() => {
+                      setScanResult(null);
+                      setCaptureMode("upload");
+                    }}
+                    className="btn btn--secondary flex-1 h-11 justify-center border border-border shadow-xs font-semibold text-xs hover:border-ink-900 flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-ink-900" />
+                    <span>+ Add Another Face & Re-Audit</span>
+                  </button>
+
                   <button
                     onClick={resetScan}
-                    className="btn btn--ghost w-full h-10 justify-center border border-border/70 shadow-xs font-mono text-xs hover:border-ink-900"
+                    className="btn btn--ghost flex-1 h-11 justify-center border border-border/70 shadow-xs font-semibold text-xs hover:border-ink-900 flex items-center gap-1.5"
                   >
-                    <RefreshCw className="w-4 h-4 text-ink-500" />
+                    <RefreshCw className="w-3.5 h-3.5 text-ink-500" />
                     <span>Scan Another Commodity</span>
                   </button>
                 </div>

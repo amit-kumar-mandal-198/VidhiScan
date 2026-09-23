@@ -88,6 +88,7 @@ export default function DemoPage() {
           target: "Kalyan Relabeling & Counterfeit Syndicate",
           score: 340,
           badge: "Defaulter (Red Flag)",
+          delta: "-300 pts (Defaulter Lock)",
           warrantUrl: data.document_url || "/static/reports/sample_warrant.pdf",
           type: "critical",
           message: "VidhiScore < 450. Flying Squad #04 dispatched with statutory entry, inventory seizure, and premises sealing powers.",
@@ -357,11 +358,13 @@ export default function DemoPage() {
             </p>
 
             <div className="pt-2 flex items-center justify-between border-t border-black/10">
-              <div className="text-xs font-mono font-bold">
-                Impact: <span className={simulationResult.delta.startsWith("+") ? "text-emerald-700" : "text-red-700"}>
-                  {simulationResult.delta}
-                </span>
-              </div>
+              {simulationResult.delta ? (
+                <div className="text-xs font-mono font-bold">
+                  Impact: <span className={simulationResult.delta.startsWith("+") ? "text-emerald-700" : "text-red-700"}>
+                    {simulationResult.delta}
+                  </span>
+                </div>
+              ) : <div />}
 
               <div className="flex items-center gap-2">
                 {simulationResult.warrantUrl && (

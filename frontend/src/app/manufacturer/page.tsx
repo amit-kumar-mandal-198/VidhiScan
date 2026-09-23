@@ -767,7 +767,8 @@ export default function ManufacturerPortal() {
 
         {/* Active Company Telemetry Dashboard */}
         {selectedCompany && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Left Col: Dynamic Badge & Score Card */}
             <div className="bg-surface-solid border border-border rounded-xl p-6 shadow-xs flex flex-col justify-between space-y-6">
@@ -1261,7 +1262,329 @@ export default function ManufacturerPortal() {
 
             </div>
           </div>
-        )}
+
+          {/* Section 2: Real-time Retail Surveillance Radar & Statutory Declarations Health */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left 2 Cols: Live Retail Surveillance & Field Inspection Telemetry */}
+            <div className="lg:col-span-2 bg-surface-solid border border-border rounded-xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <h3 className="font-bold text-sm text-ink-900 flex items-center gap-1.5">
+                      <span>Live Retail Surveillance & Citizen Verification Radar</span>
+                    </h3>
+                    <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                      8,420 Nodes Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-500">
+                    Real-time camera & sensor audits verifying packaging declarations, barcode authenticity, and statutory MRP across India.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleSimulateFieldScan}
+                    disabled={simulatingScan}
+                    className="inline-flex items-center gap-1.5 bg-surface-base hover:bg-surface-tint border border-border text-ink-800 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.98]"
+                    title="Trigger simulated live citizen camera scan"
+                  >
+                    {simulatingScan ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-ink-600" />
+                        <span>Auditing field scan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Simulate Camera Scan</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => showToast("Exported verified surveillance telemetry log (CSV).")}
+                    className="inline-flex items-center gap-1 bg-surface-base hover:bg-surface-tint border border-border text-ink-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export Log</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <div className="flex items-center gap-1.5 bg-surface-base p-1 rounded-lg border border-border">
+                  <button
+                    onClick={() => setSurveillanceFilter("all")}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      surveillanceFilter === "all"
+                        ? "bg-ink-900 text-white shadow-xs"
+                        : "text-ink-600 hover:text-ink-900"
+                    }`}
+                  >
+                    All Scans ({activeSurveillance.length})
+                  </button>
+                  <button
+                    onClick={() => setSurveillanceFilter("clean")}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      surveillanceFilter === "clean"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-ink-600 hover:text-ink-900"
+                    }`}
+                  >
+                    Verified Compliant ({activeSurveillance.filter((s) => s.isCompliant).length})
+                  </button>
+                  <button
+                    onClick={() => setSurveillanceFilter("flags")}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      surveillanceFilter === "flags"
+                        ? "bg-red-600 text-white shadow-xs"
+                        : "text-ink-600 hover:text-ink-900"
+                    }`}
+                  >
+                    Disputes / Flags ({activeSurveillance.filter((s) => !s.isCompliant).length})
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-ink-400 hidden sm:inline-block font-mono">
+                  Updated in real time via citizen sensor grid
+                </span>
+              </div>
+
+              {/* Surveillance Scans Feed */}
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                {filteredSurveillance.length > 0 ? (
+                  filteredSurveillance.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3.5 rounded-xl border border-border bg-surface-base hover:border-ink-300 transition-all space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">📦</span>
+                          <div>
+                            <div className="font-bold text-xs text-ink-900">{item.commodity}</div>
+                            <div className="text-[11px] text-ink-500 font-mono flex items-center gap-2">
+                              <span>{item.barcode}</span>
+                              <span>•</span>
+                              <span className="text-ink-600 font-sans">{item.storeName}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold">
+                            {item.verificationBadge}
+                          </span>
+                          <span className="text-[10px] text-ink-400 font-mono">{item.timestamp}</span>
+                        </div>
+                      </div>
+
+                      {/* Telemetry chips */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-border/60 text-[11px]">
+                        <div className="bg-surface-solid/80 p-1.5 rounded border border-border/80">
+                          <div className="text-[10px] text-ink-400 font-mono">Official vs Field MRP</div>
+                          <div className="font-mono font-bold text-ink-900">
+                            ₹{item.scannedMrp.toFixed(2)} <span className="text-[10px] font-normal text-emerald-600">(Match)</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-surface-solid/80 p-1.5 rounded border border-border/80">
+                          <div className="text-[10px] text-ink-400 font-mono">Net Quantity</div>
+                          <div className="font-medium text-ink-800">{item.netQty}</div>
+                        </div>
+
+                        <div className="bg-surface-solid/80 p-1.5 rounded border border-border/80">
+                          <div className="text-[10px] text-ink-400 font-mono">Rule 7 Font Ratio</div>
+                          <div className="font-mono font-medium text-emerald-800">{item.fontRatio}</div>
+                        </div>
+
+                        <div className="bg-surface-solid/80 p-1.5 rounded border border-border/80">
+                          <div className="text-[10px] text-ink-400 font-mono">Retail Geo Location</div>
+                          <div className="font-medium text-ink-700 truncate" title={item.cityArea}>
+                            📍 {item.cityArea}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-xs text-ink-400 border border-dashed border-border rounded-xl">
+                    No scans matching filter.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right 1 Col: Statutory PCR 2011 Declarations Health Matrix */}
+            <div className="bg-surface-solid border border-border rounded-xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div>
+                    <div className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-700 font-bold uppercase">
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>PCR 2011 Compliance Grid</span>
+                    </div>
+                    <h3 className="font-bold text-sm text-ink-900 mt-0.5">Mandatory Declarations Health</h3>
+                  </div>
+                  <span className="text-xs font-mono font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                    99.2% AVG
+                  </span>
+                </div>
+
+                <p className="text-xs text-ink-500">
+                  Statutory rule clearance index across all packaging sizes, labels, and registered commodities:
+                </p>
+
+                {/* Rules Progress Matrix */}
+                <div className="space-y-3">
+                  {STATUTORY_RULES.map((ruleItem) => (
+                    <div key={ruleItem.rule} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-ink-900 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{ruleItem.rule}</span>
+                          <span className="text-[11px] font-normal text-ink-600 hidden sm:inline">
+                            • {ruleItem.title}
+                          </span>
+                        </span>
+                        <span className="font-mono text-[11px] font-bold text-emerald-700">
+                          {ruleItem.score}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${ruleItem.score}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-ink-400 leading-tight">
+                        {ruleItem.detail}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border bg-surface-base p-3 rounded-lg border text-xs space-y-1">
+                <div className="flex items-center justify-between text-ink-800 font-semibold">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>National Enforcement Standing</span>
+                  </span>
+                  <span className="text-emerald-700 font-mono font-bold">Exemplary</span>
+                </div>
+                <p className="text-[11px] text-ink-500">
+                  Scheduled Re-Certification window opens on <span className="font-semibold text-ink-800">12 Oct 2026</span>. Continuous OpenCV compliance monitoring active.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Section 3: Statutory Regulatory Circulars & Gazette Guidance Center */}
+          <div className="bg-surface-solid border border-border rounded-xl p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
+              <div className="space-y-0.5">
+                <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-tile-indigo-fg bg-tile-indigo-bg px-2.5 py-0.5 rounded-full">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Statutory Gazette Advisory Bulletin</span>
+                </div>
+                <h3 className="text-base font-bold text-ink-900 mt-1">
+                  Department of Consumer Affairs (DCA) Regulatory Circulars & Compliance Directives
+                </h3>
+                <p className="text-xs text-ink-500">
+                  Official Gazette notifications and packaging amendments governing Legal Metrology (Packaged Commodities) Rules, 2011.
+                </p>
+              </div>
+
+              <button
+                onClick={() => alert("Statutory Legal Metrology PCR 2011 Regulatory Reference Compendium downloaded.")}
+                className="inline-flex items-center gap-1.5 bg-ink-900 hover:bg-black text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs self-start sm:self-auto shrink-0"
+              >
+                <Download className="w-3.5 h-3.5 text-lime-400" />
+                <span>Download PCR Handbook (PDF)</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {/* Advisory 1 */}
+              <div className="p-4 rounded-xl border border-border bg-surface-base space-y-2.5 hover:border-ink-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded">
+                    DCA Circular 2026/04
+                  </span>
+                  <span className="text-[10px] text-ink-400 font-mono">Mandatory Nov 2026</span>
+                </div>
+                <h4 className="font-bold text-ink-900 text-xs">
+                  Unit Sale Price (USP) Bold Typography Mandate
+                </h4>
+                <p className="text-[11px] text-ink-600 leading-relaxed">
+                  Mandatory declaration of Unit Sale Price in bold lettering alongside declared MRP for packages equal to or exceeding 250ml or 250g.
+                </p>
+                <div className="pt-1 flex items-center justify-between text-[11px] text-emerald-700 font-semibold border-t border-border/60">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Rule 6(1)(e) Status: Passed</span>
+                  </span>
+                  <span className="text-ink-400 font-mono">100% SKU Coverage</span>
+                </div>
+              </div>
+
+              {/* Advisory 2 */}
+              <div className="p-4 rounded-xl border border-border bg-surface-base space-y-2.5 hover:border-ink-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded">
+                    Gazette GSR 821(E)
+                  </span>
+                  <span className="text-[10px] text-ink-400 font-mono">Enacted Gazette</span>
+                </div>
+                <h4 className="font-bold text-ink-900 text-xs">
+                  Digital Pre-Flight Packaging Twin Recognition
+                </h4>
+                <p className="text-[11px] text-ink-600 leading-relaxed">
+                  Pre-launch computer vision testing of artwork vectors grants immediate +40 pts trust rating and shields against retail batch seizures.
+                </p>
+                <div className="pt-1 flex items-center justify-between text-[11px] text-emerald-700 font-semibold border-t border-border/60">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Pre-Flight Studio Enabled</span>
+                  </span>
+                  <span className="text-ink-400 font-mono">+40 pts Granted</span>
+                </div>
+              </div>
+
+              {/* Advisory 3 */}
+              <div className="p-4 rounded-xl border border-border bg-surface-base space-y-2.5 hover:border-ink-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-900 border border-blue-200 px-2 py-0.5 rounded">
+                    Enforcement Directive #482
+                  </span>
+                  <span className="text-[10px] text-ink-400 font-mono">Active Directive</span>
+                </div>
+                <h4 className="font-bold text-ink-900 text-xs">
+                  Surveillance on Retail Dual-MRP Sticker Overwrites
+                </h4>
+                <p className="text-[11px] text-ink-600 leading-relaxed">
+                  Legal Metrology enforcement squads authorized to conduct spot raids against retail vendors tampering with manufacturer pre-printed MRPs.
+                </p>
+                <div className="pt-1 flex items-center justify-between text-[11px] text-blue-700 font-semibold border-t border-border/60">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Tamper-Proof Hologram Pass</span>
+                  </span>
+                  <span className="text-ink-400 font-mono">0 Violations</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       </div>
 

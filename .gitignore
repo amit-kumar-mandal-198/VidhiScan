@@ -37,3 +37,6 @@ cloudflared.exe
 *.exe
 .DS_Store
 Thumbs.db
+*.jpeg
+WhatsApp Image*
+

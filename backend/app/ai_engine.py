@@ -80,7 +80,7 @@ Return a valid JSON object matching this schema:
 Return ONLY pure valid JSON."""
 
         # Try fastest multimodal models with resilient fallbacks
-        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.5-flash"]
+        models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-pro-latest"]
         for mname in models_to_try:
             try:
                 model = genai.GenerativeModel(mname)
