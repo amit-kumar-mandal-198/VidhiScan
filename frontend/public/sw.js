@@ -1,10 +1,12 @@
-// VidhiScan Offline-First Service Worker (v3 - No Navigation Hijacking)
-const CACHE_NAME = 'vidhiscan-pwa-v3';
+// VidhiScan Offline-First Service Worker (v4 - Gov Mark 01 Logo Update)
+const CACHE_NAME = 'vidhiscan-pwa-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/icon.svg',
   '/icon.png',
   '/icon-512.png',
+  '/apple-touch-icon.png',
   '/scan',
   '/inspector',
   '/admin'
